@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  
+  <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00ffcc">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+    <meta charset="UTF-8">
+    <title>FNF V-Slice: Ultra Fixed Packer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: #1a1a1a; padding: 25px; border-radius: 12px; border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.2); }
+        
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .panel { background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333; }
+        h3 { color: #00ffcc; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        
+        input, select { background: #000; color: #00ffcc; border: 1px solid #444; padding: 8px; width: 100%; box-sizing: border-box; border-radius: 4px; }
+        input[type="number"] { width: 100%; }
+
+        /* Acciones en bloque */
+        .bulk-actions { background: #111; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed #00ffcc; display: flex; justify-content: center; gap: 15px; align-items: center; }
+        .bulk-actions select { width: 200px; }
+
+        .frame-list { background: #000; height: 350px; overflow-y: auto; margin: 15px 0; border: 1px solid #333; border-radius: 5px; }
+        .frame-item { display: flex; align-items: center; gap: 15px; padding: 8px; border-bottom: 1px solid #222; }
+        .frame-item img { width: 45px; height: 45px; object-fit: contain; background: #111; border: 1px solid #333; }
+        .frame-item input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
+
+        .btn-main { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 8px; font-size: 18px; transition: 0.3s; }
+        .btn-main:hover { background: #00e6b8; transform: scale(1.01); }
+        .btn-main:disabled { background: #444; color: #888; transform: none; }
+        
+        .btn-sec { background: #444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
+        
+        #status { text-align: center; margin-top: 10px; color: #00ffcc; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>V-Slice Character Packer (Selección Múltiple)</h2>
+    
+    <div class="config-grid">
+        <div class="panel">
+            <h3>Identidad</h3>
+            <label>Nombre Carpeta:</label>
+            <input type="text" id="charName" value="bf_custom">
+            <label>Símbolo (Symbol):</label>
+            <input type="text" id="symName" value="BOYFRIEND CS">
+        </div>
+        <div class="panel">
+            <h3>Posición (STI)</h3>
+            <label>MX X (Centro 640):</label>
+            <input type="number" id="stiX" value="640">
+            <label>MX Y (Centro 360):</label>
+            <input type="number" id="stiY" value="360">
+        </div>
+        <div class="panel">
+            <h3>Metadatos</h3>
+            <label>FPS:</label>
+            <input type="number" id="fps" value="24">
+            <label>Versión:</label>
+            <input type="text" id="version" value="BTA 1.2.0">
+        </div>
+    </div>
+
+    <div class="panel">
+        <h3>1. Cargar Imágenes (PNG)</h3>
+        <input type="file" id="fileInput" multiple accept="image/png">
+    </div>
+
+    <div class="bulk-actions">
+        <strong>Selección múltiple:</strong>
+        <button class="btn-sec" onclick="toggleAll(true)">Marcar Todos</button>
+        <button class="btn-sec" onclick="toggleAll(false)">Desmarcar</button>
+        <div style="border-left: 1px solid #444; height: 30px; margin: 0 10px;"></div>
+        <span>Asignar:</span>
+        <select id="bulkAnimSelect">
+            <option value="idle">idle</option>
+            <option value="confirm">confirm</option>
+            <option value="select">select</option>
+            <option value="deselect">deselect</option>
+            <option value="slidein">slidein</option>
+            <option value="slideout">slideout</option>
+            <option value="slidein idle point">slidein idle point</option>
+            <option value="deselect loop start">deselect loop start</option>
+        </select>
+        <button class="btn-main" style="width: auto; padding: 8px 20px; font-size: 14px;" onclick="applyBulk()">Aplicar</button>
+    </div>
+
+    <div class="frame-list" id="frameList">
+        <p style="text-align:center; padding: 20px; color:#555;">Arrastra o selecciona tus archivos PNG...</p>
+    </div>
+
+    <button id="genBtn" class="btn-main" onclick="processAll()" disabled>GENERAR PACK COMPLETO</button>
+    <div id="status">Esperando archivos...</div>
+</div>
+
+<canvas id="c" style="display:none;"></canvas>
+
+<script>
+    let framesData = [];
+    const anims = ["idle", "confirm", "select", "deselect", "slidein", "slideout", "slidein idle point", "deselect loop start"];
+
+    document.getElementById('fileInput').onchange = async (e) => {
+        const list = document.getElementById('frameList');
+        list.innerHTML = '';
+        framesData = [];
+        const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+        
+        for(let i=0; i<files.length; i++) {
+            const img = await new Promise(r => { const reader = new FileReader(); reader.onload=e=>{ const im=new Image(); im.onload=()=>r(im); im.src=e.target.result; }; reader.readAsDataURL(files[i]); });
+            framesData.push({ img, name: i.toString(), file: files[i] });
+            
+            const div = document.createElement('div');
+            div.className = 'frame-item';
+            div.innerHTML = `
+                <input type="checkbox" class="frame-cb" data-idx="${i}">
+                <img src="${img.src}">
+                <span style="font-family:monospace; width:60px;">[${i}]</span>
+                <select id="anim_${i}">
+                    ${anims.map(a => `<option value="${a}" ${i===0 && a==='idle'?'selected':''}>${a}</option>`).join('')}
+                </select>
+            `;
+            list.appendChild(div);
+        }
+        document.getElementById('genBtn').disabled = false;
+        document.getElementById('status').innerText = `${framesData.length} imágenes cargadas.`;
+    };
+
+    // FUNCIONES DE SELECCIÓN MÚLTIPLE
+    function toggleAll(val) {
+        document.querySelectorAll('.frame-cb').forEach(cb => cb.checked = val);
+    }
+
+    function applyBulk() {
+        const val = document.getElementById('bulkAnimSelect').value;
+        const selected = document.querySelectorAll('.frame-cb:checked');
+        if(selected.length === 0) return alert("Selecciona primero los cuadros usando los cuadritos de la izquierda.");
+        selected.forEach(cb => {
+            document.getElementById(`anim_${cb.dataset.idx}`).value = val;
+        });
+        document.getElementById('status').innerText = `Asignado "${val}" a ${selected.length} frames.`;
+    }
+
+    async function processAll() {
+        const status = document.getElementById('status');
+        status.innerText = "Procesando Atlas y JSONs...";
+        
+        const c = document.getElementById('c');
+        const ctx = c.getContext('2d');
+        const padding = 2;
+        
+        // Empaquetado de Atlas
+        let currentX = 0, currentY = 0, rowH = 0, maxW = 2048;
+        framesData.forEach(f => {
+            if(currentX + f.img.width > maxW) { currentX = 0; currentY += rowH + padding; rowH = 0; }
+            f.x = currentX; f.y = currentY;
+            currentX += f.img.width + padding;
+            rowH = Math.max(rowH, f.img.height);
+        });
+
+        c.width = maxW; c.height = currentY + rowH;
+        framesData.forEach(f => ctx.drawImage(f.img, f.x, f.y));
+
+        // Organización por animaciones
+        const charN = document.getElementById('charName').value;
+        const symN = document.getElementById('symName').value;
+        const framesByAnim = {};
+        
+        framesData.forEach((f, i) => {
+            const a = document.getElementById(`anim_${i}`).value;
+            if(!framesByAnim[a]) framesByAnim[a] = [];
+            framesByAnim[a].push(f);
+        });
+
+        // Generar Labels (Timeline)
+        const layerFrames = [];
+        let totalFramesCount = 0;
+        anims.forEach(a => {
+            if(framesByAnim[a]) {
+                const start = totalFramesCount;
+                const dur = framesByAnim[a].length;
+                layerFrames.push({ "N": a, "I": start, "DU": dur, "E": [] });
+                totalFramesCount += dur;
+            }
+        });
+
+        // Generar Instancias de Sprites
+        const spriteInstances = [];
+        let globalIdx = 0;
+        anims.forEach(a => {
+            if(framesByAnim[a]) {
+                framesByAnim[a].forEach(f => {
+                    spriteInstances.push({ "I": globalIdx++, "DU": 1, "E": [{ "ASI": { "N": f.name, "M3D": [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1] }}] });
+                });
+            }
+        });
+
+        const animationJson = {
+            "AN": {
+                "N": charN,
+                "STI": { "SI": { "SN": symN, "FF": 0, "ST": "G", "TRP": {"x":0,"y":0}, "LP": "PO", "MX": [1,0,0,1, parseFloat(document.getElementById('stiX').value), parseFloat(document.getElementById('stiY').value)] }},
+                "SN": symN,
+                "TL": {
+                    "L": [
+                        { "LN": "Labels", "FR": layerFrames },
+                        { "LN": "Sprites", "FR": spriteInstances }
+                    ]
+                }
+            },
+            "MD": { "V": document.getElementById('version').value, "FRT": parseFloat(document.getElementById('fps').value), "W": 1280, "H": 720, "ASV": 3 }
+        };
+
+        const spritemapJson = {
+            "ATLAS": {
+                "SPRITES": framesData.map(f => ({ "SPRITE": { "name": f.name, "x": f.x, "y": f.y, "w": f.img.width, "h": f.img.height, "rotated": false } })),
+                "meta": { "app": "Spritemap Convert Web", "version": "22.0.5.191", "image": "spritemap1.png", "format": "RGBA8888", "size": {"w":c.width,"h":c.height}, "resolution": "1" }
+            }
+        };
+
+        const zip = new JSZip();
+        const folder = zip.folder(charN);
+        folder.file("Animation.json", JSON.stringify(animationJson, null, 2));
+        folder.file("spritemap1.json", JSON.stringify(spritemapJson, null, 2));
+        const imgBlob = await new Promise(r => c.toBlob(r));
+        folder.file("spritemap1.png", imgBlob);
+
+        const content = await zip.generateAsync({type:"blob"});
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(content);
+        link.download = `${charN}_Vslice_Pack.zip`;
+        link.click();
+        status.innerText = "¡ZIP generado con éxito!";
+    }
+</script>
+</body>
+</html>
