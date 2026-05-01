@@ -1,0 +1,22 @@
+{
+  "short_name": "FNF Packer",
+  "name": "FNF V-Slice: Ultra Fixed Packer",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#0d0d0d",
+  "display": "standalone",
+  "scope": "./",
+  "theme_color": "#00ffcc",
+  "description": "Herramienta avanzada para empaquetar personajes de FNF V-Slice sin errores de objeto nulo."
+}
