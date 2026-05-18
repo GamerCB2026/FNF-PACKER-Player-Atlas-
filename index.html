@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
-<head>
+   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
@@ -11,17 +11,17 @@
     <meta name="google" content="notranslate">
     <link rel="icon" type="image/png" href="./favicon.png">
     <meta name="google-site-verification" content="HoPFeGB2vyj6WGcWtANG3RN5dgnxbF1lW8QlIJo7qxg" />
-<head>
-  
+   <head>
+    <meta charset="UTF-8">
+    <title>FNF V-Slice: Ultra Fixed Packer V1.0.1</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
   <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00ffcc">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icon-192.png">
 
-    <meta charset="UTF-8">
-    <title>FNF V-Slice: Ultra Fixed Packer</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; }
         .container { max-width: 1000px; margin: auto; background: #1a1a1a; padding: 25px; border-radius: 12px; border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.2); }
@@ -33,8 +33,14 @@
         input, select { background: #000; color: #00ffcc; border: 1px solid #444; padding: 8px; width: 100%; box-sizing: border-box; border-radius: 4px; }
         input[type="number"] { width: 100%; }
 
+        /* Apartado de Animaciones Personalizadas V1.0.1 */
+        .custom-anim-box { display: flex; gap: 10px; margin-top: 10px; }
+        .custom-anim-box input { width: 70%; }
+        .btn-add { background: #333; color: #00ffcc; border: 1px solid #00ffcc; padding: 8px; border-radius: 4px; cursor: pointer; width: 30%; font-weight: bold; }
+        .btn-add:hover { background: #00ffcc; color: #000; }
+
         /* Acciones en bloque */
-        .bulk-actions { background: #111; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed #00ffcc; display: flex; justify-content: center; gap: 15px; align-items: center; }
+        .bulk-actions { background: #111; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed #00ffcc; display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap; }
         .bulk-actions select { width: 200px; }
 
         .frame-list { background: #000; height: 350px; overflow-y: auto; margin: 15px 0; border: 1px solid #333; border-radius: 5px; }
@@ -54,7 +60,7 @@
 <body>
 
 <div class="container">
-    <h2>V-Slice Character Packer (Selección Múltiple)</h2>
+    <h2>V-Slice Character Packer <span style="font-size: 14px; color: #888;">v1.0.1</span></h2>
     
     <div class="config-grid">
         <div class="panel">
@@ -72,11 +78,13 @@
             <input type="number" id="stiY" value="360">
         </div>
         <div class="panel">
-            <h3>Metadatos</h3>
-            <label>FPS:</label>
+            <h3>Ajustes e Inserción</h3>
+            <label>FPS de Animación:</label>
             <input type="number" id="fps" value="24">
-            <label>Versión:</label>
-            <input type="text" id="version" value="BTA 1.2.0">
+            <div class="custom-anim-box">
+                <input type="text" id="newAnimName" placeholder="Nueva animación...">
+                <button class="btn-add" onclick="addNewAnimation()">Añadir</button>
+            </div>
         </div>
     </div>
 
@@ -90,17 +98,8 @@
         <button class="btn-sec" onclick="toggleAll(true)">Marcar Todos</button>
         <button class="btn-sec" onclick="toggleAll(false)">Desmarcar</button>
         <div style="border-left: 1px solid #444; height: 30px; margin: 0 10px;"></div>
-        <span>Asignar:</span>
-        <select id="bulkAnimSelect">
-            <option value="idle">idle</option>
-            <option value="confirm">confirm</option>
-            <option value="select">select</option>
-            <option value="deselect">deselect</option>
-            <option value="slidein">slidein</option>
-            <option value="slideout">slideout</option>
-            <option value="slidein idle point">slidein idle point</option>
-            <option value="deselect loop start">deselect loop start</option>
-        </select>
+        <span>Asignar animación:</span>
+        <select id="bulkAnimSelect"></select>
         <button class="btn-main" style="width: auto; padding: 8px 20px; font-size: 14px;" onclick="applyBulk()">Aplicar</button>
     </div>
 
@@ -116,7 +115,43 @@
 
 <script>
     let framesData = [];
-    const anims = ["idle", "confirm", "select", "deselect", "slidein", "slideout", "slidein idle point", "deselect loop start"];
+    let anims = ["idle", "confirm", "select", "deselect", "slidein", "slideout", "slidein idle point", "deselect loop start"];
+
+    window.onload = () => {
+        updateAnimSelectors();
+    };
+
+    function updateAnimSelectors() {
+        const bulkSelect = document.getElementById('bulkAnimSelect');
+        const currentBulkVal = bulkSelect.value;
+        
+        bulkSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
+        if (anims.includes(currentBulkVal)) bulkSelect.value = currentBulkVal;
+
+        framesData.forEach((_, i) => {
+            const indSelect = document.getElementById(`anim_${i}`);
+            if (indSelect) {
+                const currentVal = indSelect.value;
+                indSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
+                if (anims.includes(currentVal)) {
+                    indSelect.value = currentVal;
+                }
+            }
+        });
+    }
+
+    function addNewAnimation() {
+        const input = document.getElementById('newAnimName');
+        const name = input.value.trim();
+        
+        if (name === "") return alert("Por favor escribe un nombre para la animación.");
+        if (anims.includes(name)) return alert("Esa animación ya existe en la lista.");
+
+        anims.push(name);
+        updateAnimSelectors();
+        input.value = "";
+        document.getElementById('status').innerText = `Animación "${name}" añadida.`;
+    }
 
     document.getElementById('fileInput').onchange = async (e) => {
         const list = document.getElementById('frameList');
@@ -144,7 +179,6 @@
         document.getElementById('status').innerText = `${framesData.length} imágenes cargadas.`;
     };
 
-    // FUNCIONES DE SELECCIÓN MÚLTIPLE
     function toggleAll(val) {
         document.querySelectorAll('.frame-cb').forEach(cb => cb.checked = val);
     }
@@ -152,11 +186,10 @@
     function applyBulk() {
         const val = document.getElementById('bulkAnimSelect').value;
         const selected = document.querySelectorAll('.frame-cb:checked');
-        if(selected.length === 0) return alert("Selecciona primero los cuadros usando los cuadritos de la izquierda.");
+        if(selected.length === 0) return alert("Selecciona primero los cuadros.");
         selected.forEach(cb => {
             document.getElementById(`anim_${cb.dataset.idx}`).value = val;
         });
-        document.getElementById('status').innerText = `Asignado "${val}" a ${selected.length} frames.`;
     }
 
     async function processAll() {
@@ -167,7 +200,6 @@
         const ctx = c.getContext('2d');
         const padding = 2;
         
-        // Empaquetado de Atlas
         let currentX = 0, currentY = 0, rowH = 0, maxW = 2048;
         framesData.forEach(f => {
             if(currentX + f.img.width > maxW) { currentX = 0; currentY += rowH + padding; rowH = 0; }
@@ -179,7 +211,6 @@
         c.width = maxW; c.height = currentY + rowH;
         framesData.forEach(f => ctx.drawImage(f.img, f.x, f.y));
 
-        // Organización por animaciones
         const charN = document.getElementById('charName').value;
         const symN = document.getElementById('symName').value;
         const framesByAnim = {};
@@ -190,11 +221,11 @@
             framesByAnim[a].push(f);
         });
 
-        // Generar Labels (Timeline)
         const layerFrames = [];
         let totalFramesCount = 0;
+        
         anims.forEach(a => {
-            if(framesByAnim[a]) {
+            if(framesByAnim[a] && framesByAnim[a].length > 0) {
                 const start = totalFramesCount;
                 const dur = framesByAnim[a].length;
                 layerFrames.push({ "N": a, "I": start, "DU": dur, "E": [] });
@@ -202,16 +233,18 @@
             }
         });
 
-        // Generar Instancias de Sprites
         const spriteInstances = [];
         let globalIdx = 0;
         anims.forEach(a => {
-            if(framesByAnim[a]) {
+            if(framesByAnim[a] && framesByAnim[a].length > 0) {
                 framesByAnim[a].forEach(f => {
                     spriteInstances.push({ "I": globalIdx++, "DU": 1, "E": [{ "ASI": { "N": f.name, "M3D": [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1] }}] });
                 });
             }
         });
+
+        // RECONEXIÓN DE FPS DINÁMICOS AQUÍ
+        const userFps = parseFloat(document.getElementById('fps').value) || 24;
 
         const animationJson = {
             "AN": {
@@ -225,7 +258,7 @@
                     ]
                 }
             },
-            "MD": { "V": document.getElementById('version').value, "FRT": parseFloat(document.getElementById('fps').value), "W": 1280, "H": 720, "ASV": 3 }
+            "MD": { "V": "BTA 1.2.0", "FRT": userFps, "W": 1280, "H": 720, "ASV": 3 }
         };
 
         const spritemapJson = {
@@ -247,7 +280,7 @@
         link.href = URL.createObjectURL(content);
         link.download = `${charN}_Vslice_Pack.zip`;
         link.click();
-        status.innerText = "¡ZIP generado con éxito!";
+        status.innerText = "¡ZIP generado con éxito con FPS configurados!";
     }
 </script>
 </body>
