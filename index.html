@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="es">
-   <head>
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <title>FNF PACKER (player atlas) — Fase Beta</title>
+    <title>FNF PACKER (player atlas) — V2.0.0</title>
     
     <meta name="description" content="FNF PACKER. Lugar para crear tus spritemaps y animations en FNF especialmente para el Player Select.">
     
     <meta name="google" content="notranslate">
     <link rel="icon" type="image/png" href="./favicon.png">
     <meta name="google-site-verification" content="HoPFeGB2vyj6WGcWtANG3RN5dgnxbF1lW8QlIJo7qxg" />
+    
+    <!-- Librería externa para empaquetar el ZIP -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
  
     <link rel="manifest" href="manifest.json">
@@ -19,68 +21,36 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d0d0d; color: #fff; padding: 20px; }
-        .container { max-width: 1000px; margin: auto; background: #1a1a1a; padding: 25px; border-radius: 12px; border: 2px solid #00ffcc; box-shadow: 0 0 20px rgba(0,255,204,0.2); }
-        
-        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .panel { background: #252525; padding: 15px; border-radius: 8px; border: 1px solid #333; }
-        h3 { color: #00ffcc; margin-top: 0; font-size: 14px; text-transform: uppercase; border-bottom: 1px solid #333; padding-bottom: 5px; }
-        
-        input, select { background: #000; color: #00ffcc; border: 1px solid #444; padding: 8px; width: 100%; box-sizing: border-box; border-radius: 4px; }
-        input[type="number"] { width: 100%; }
-
-        /* Apartado de Animaciones Personalizadas V1.0.1 */
-        .custom-anim-box { display: flex; gap: 10px; margin-top: 10px; }
-        .custom-anim-box input { width: 70%; }
-        .btn-add { background: #333; color: #00ffcc; border: 1px solid #00ffcc; padding: 8px; border-radius: 4px; cursor: pointer; width: 30%; font-weight: bold; }
-        .btn-add:hover { background: #00ffcc; color: #000; }
-
-        /* Acciones en bloque */
-        .bulk-actions { background: #111; padding: 15px; border-radius: 10px; margin: 15px 0; border: 1px dashed #00ffcc; display: flex; justify-content: center; gap: 15px; align-items: center; flex-wrap: wrap; }
-        .bulk-actions select { width: 200px; }
-
-        .frame-list { background: #000; height: 350px; overflow-y: auto; margin: 15px 0; border: 1px solid #333; border-radius: 5px; }
-        .frame-item { display: flex; align-items: center; gap: 15px; padding: 8px; border-bottom: 1px solid #222; }
-        .frame-item img { width: 45px; height: 45px; object-fit: contain; background: #111; border: 1px solid #333; }
-        .frame-item input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
-
-        .btn-main { background: #00ffcc; color: #000; border: none; padding: 15px; width: 100%; font-weight: bold; cursor: pointer; border-radius: 8px; font-size: 18px; transition: 0.3s; }
-        .btn-main:hover { background: #00e6b8; transform: scale(1.01); }
-        .btn-main:disabled { background: #444; color: #888; transform: none; }
-        
-        .btn-sec { background: #444; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; }
-        
-        #status { text-align: center; margin-top: 10px; color: #00ffcc; font-weight: bold; }
-    </style>
+    <!-- CORRECCIÓN: Ruta apuntando a tu carpeta 'Style' -->
+    <link rel="stylesheet" href="Style/style.css">
 </head>
 <body>
 
 <div class="container">
-    <h2>V-Slice Character Packer <span style="font-size: 14px; color: #888;">v1.0.1 (Fase Beta)</span></h2>
+    <h2>FNF Packer (Player Atlas)<span style="font-size: 14px; color: #ff007f; text-shadow: none;">v2.0.0</span></h2>
     
     <div class="config-grid">
         <div class="panel">
             <h3>Identidad</h3>
-            <label>Nombre Carpeta:</label>
+            <label for="charName">Nombre Carpeta:</label>
             <input type="text" id="charName" value="bf_custom">
-            <label>Símbolo (Symbol):</label>
+            <label for="symName">Símbolo (Symbol):</label>
             <input type="text" id="symName" value="BOYFRIEND CS">
         </div>
         <div class="panel">
             <h3>Posición (STI)</h3>
-            <label>MX X (Centro 0):</label>
+            <label for="stiX">MX X (Centro 0):</label>
             <input type="number" id="stiX" value="0">
-            <label>MX Y (Centro 0):</label>
+            <label for="stiY">MX Y (Centro 0):</label>
             <input type="number" id="stiY" value="0">
         </div>
         <div class="panel">
             <h3>Ajustes e Inserción</h3>
-            <label>FPS de Animación:</label>
+            <label for="fps">FPS de Animación:</label>
             <input type="number" id="fps" value="24">
             <div class="custom-anim-box">
                 <input type="text" id="newAnimName" placeholder="Nueva animación...">
-                <button class="btn-add" onclick="addNewAnimation()">Añadir</button>
+                <button class="btn-add" id="addAnimBtn">Añadir</button>
             </div>
         </div>
     </div>
@@ -91,228 +61,37 @@
     </div>
 
     <div class="bulk-actions">
-        <strong>Selección múltiple:</strong>
-        <button class="btn-sec" onclick="toggleAll(true)">Marcar Todos</button>
-        <button class="btn-sec" onclick="toggleAll(false)">Desmarcar</button>
-        <div style="border-left: 1px solid #444; height: 30px; margin: 0 10px;"></div>
-        <span>Asignar animación:</span>
+        <strong>Selección múltiple</strong>
+        <button class="btn-sec" id="selectAllBtn">Marcar Todos</button>
+        <button class="btn-sec" id="deselectAllBtn">Desmarcar</button>
+        <div style="border-left: 1px solid rgba(255, 255, 255, 0.1); height: 30px; margin: 0 10px;"></div>
+        <span style="color: #a0aec0; font-size: 11px; text-transform: uppercase;">Asignar:</span>
         <select id="bulkAnimSelect"></select>
-        <button class="btn-main" style="width: auto; padding: 8px 20px; font-size: 14px;" onclick="applyBulk()">Aplicar</button>
+        <button class="btn-main" id="applyBulkBtn" style="width: auto; padding: 8px 20px; font-size: 12px; box-shadow: none;">Aplicar</button>
     </div>
 
     <div class="frame-list" id="frameList">
-        <p style="text-align:center; padding: 20px; color:#555;">Arrastra o selecciona tus archivos PNG...</p>
+        <p style="text-align:center; padding: 40px; color:#555; font-family: monospace;">[ Arrastra o selecciona tus archivos PNG para empezar ]</p>
     </div>
 
-    <button id="genBtn" class="btn-main" onclick="processAll()" disabled>GENERAR PACK COMPLETO</button>
+    <button id="genBtn" class="btn-main" disabled>GENERAR PACK COMPLETO</button>
     <div id="status">Esperando archivos...</div>
-</div>
+</div> <!-- AQUÍ SÍ SE CIERRA EL CONTAINER CORRECTAMENTE -->
 
 <canvas id="c" style="display:none;"></canvas>
 
-<script>
-    let framesData = [];
-    let anims = ["idle", "confirm", "select", "deselect", "slidein", "slideout", "slidein idle point", "deselect loop start"];
+<!-- Tarjeta Flotante de Créditos de GamerCB -->
+<div class="creator-card">
+    <img src="Credits/GamerCB.jpg" alt="GamerCB" class="creator-avatar">
+    <div class="creator-info">
+        <p class="creator-desc">
+            Creador de el FNF Packer cualquiera que vean con esta pagina no es de ellos es mia de GamerCB suscribanse a mi canal para mas paginas como esta
+        </p>
+        <a href="https://www.youtube.com/@GamerCB2026/videos" target="_blank" class="creator-link">GamerCB</a>
+    </div>
+</div>
 
-    window.onload = () => {
-        updateAnimSelectors();
-    };
-
-    function updateAnimSelectors() {
-        const bulkSelect = document.getElementById('bulkAnimSelect');
-        const currentBulkVal = bulkSelect.value;
-        bulkSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
-        if (anims.includes(currentBulkVal)) bulkSelect.value = currentBulkVal;
-
-        framesData.forEach((_, i) => {
-            const indSelect = document.getElementById(`anim_${i}`);
-            if (indSelect) {
-                const currentVal = indSelect.value;
-                indSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
-                if (anims.includes(currentVal)) {
-                    indSelect.value = currentVal;
-                }
-            }
-        });
-    }
-
-    function addNewAnimation() {
-        const input = document.getElementById('newAnimName');
-        const name = input.value.trim();
-        
-        if (name === "") return alert("Por favor escribe un nombre para la animación.");
-        if (anims.includes(name)) return alert("Esa animación ya existe en la lista.");
-
-        anims.push(name);
-        updateAnimSelectors();
-        input.value = "";
-        document.getElementById('status').innerText = `Animación "${name}" añadida.`;
-    }
-
-    document.getElementById('fileInput').onchange = async (e) => {
-        const list = document.getElementById('frameList');
-        list.innerHTML = '';
-        framesData = [];
-        const files = Array.from(e.target.files).sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
-        for(let i=0; i<files.length; i++) {
-            const img = await new Promise(r => { const reader = new FileReader(); reader.onload=e=>{ const im=new Image(); im.onload=()=>r(im); im.src=e.target.result; }; reader.readAsDataURL(files[i]); });
-            framesData.push({ img, name: i.toString(), file: files[i] });
-            
-            const div = document.createElement('div');
-            div.className = 'frame-item';
-            div.innerHTML = `
-                <input type="checkbox" class="frame-cb" data-idx="${i}">
-                <img src="${img.src}">
-                <span style="font-family:monospace; width:60px;">[${i}]</span>
-                <select id="anim_${i}">
-                    ${anims.map(a => `<option value="${a}" ${i===0 && a==='idle'?'selected':''}>${a}</option>`).join('')}
-                </select>
-            `;
-            list.appendChild(div);
-        }
-        document.getElementById('genBtn').disabled = false;
-        document.getElementById('status').innerText = `${framesData.length} imágenes cargadas.`;
-    };
-
-    function toggleAll(val) {
-        document.querySelectorAll('.frame-cb').forEach(cb => cb.checked = val);
-    }
-
-    function applyBulk() {
-        const val = document.getElementById('bulkAnimSelect').value;
-        const selected = document.querySelectorAll('.frame-cb:checked');
-        if(selected.length === 0) return alert("Selecciona primero los cuadros.");
-        selected.forEach(cb => {
-            document.getElementById(`anim_${cb.dataset.idx}`).value = val;
-        });
-    }
-
-    async function processAll() {
-        const status = document.getElementById('status');
-        status.innerText = "Procesando Atlas y JSONs...";
-        
-        const c = document.getElementById('c');
-        const ctx = c.getContext('2d');
-        const padding = 2;
-
-        // --- ALGORITMO DE OPTIMIZACIÓN DINÁMICA DE TEXTURA ---
-        // 1. Calculamos el área total que ocupan todas las imágenes juntas
-        let totalArea = 0;
-        let maxFrameW = 0;
-        let maxFrameH = 0;
-
-        framesData.forEach(f => {
-            totalArea += (f.img.width + padding) * (f.img.height + padding);
-            if (f.img.width > maxFrameW) maxFrameW = f.img.width;
-            if (f.img.height > maxFrameH) maxFrameH = f.img.height;
-        });
-
-        // 2. Definimos un ancho objetivo (idealmente la raíz cuadrada para buscar un cuadrado compacto)
-        // Pero asegurándonos de que no sea más pequeño que el frame más ancho de todos.
-        let idealWidth = Math.max(maxFrameW + padding, Math.ceil(Math.sqrt(totalArea)));
-        
-        // 3. Primera pasada: Simular el acomodo para encontrar las dimensiones reales que se necesitarán
-        let currentX = 0;
-        let currentY = 0;
-        let rowH = 0;
-        let finalWidth = 0;
-
-        framesData.forEach(f => {
-            if (currentX + f.img.width > idealWidth) {
-                currentX = 0;
-                currentY += rowH + padding;
-                rowH = 0;
-            }
-            f.x = currentX;
-            f.y = currentY;
-            currentX += f.img.width + padding;
-            rowH = Math.max(rowH, f.img.height);
-            
-            if (f.x + f.img.width > finalWidth) {
-                finalWidth = f.x + f.img.width;
-            }
-        });
-
-        let finalHeight = currentY + rowH;
-
-        // 4. Asignamos el tamaño real y exacto calculado al canvas
-        c.width = finalWidth;
-        c.height = finalHeight;
-
-        // Limpiamos y dibujamos sobre las nuevas dimensiones optimizadas
-        ctx.clearRect(0, 0, c.width, c.height);
-        framesData.forEach(f => ctx.drawImage(f.img, f.x, f.y));
-        // ----------------------------------------------------
-
-        const charN = document.getElementById('charName').value;
-        const symN = document.getElementById('symName').value;
-        const framesByAnim = {};
-        
-        framesData.forEach((f, i) => {
-            const a = document.getElementById(`anim_${i}`).value;
-            if(!framesByAnim[a]) framesByAnim[a] = [];
-            framesByAnim[a].push(f);
-        });
-
-        const layerFrames = [];
-        let totalFramesCount = 0;
-        
-        anims.forEach(a => {
-            if(framesByAnim[a] && framesByAnim[a].length > 0) {
-                const start = totalFramesCount;
-                const dur = framesByAnim[a].length;
-                layerFrames.push({ "N": a, "I": start, "DU": dur, "E": [] });
-                totalFramesCount += dur;
-            }
-        });
-
-        const spriteInstances = [];
-        let globalIdx = 0;
-        anims.forEach(a => {
-            if(framesByAnim[a] && framesByAnim[a].length > 0) {
-                framesByAnim[a].forEach(f => {
-                    spriteInstances.push({ "I": globalIdx++, "DU": 1, "E": [{ "ASI": { "N": f.name, "M3D": [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1] }}] });
-                });
-            }
-        });
-
-        const userFps = parseFloat(document.getElementById('fps').value) || 24;
-        const animationJson = {
-            "AN": {
-                "N": charN,
-                "STI": { "SI": { "SN": symN, "FF": 0, "ST": "G", "TRP": {"x":0,"y":0}, "LP": "PO", "MX": [1,0,0,1, parseFloat(document.getElementById('stiX').value), parseFloat(document.getElementById('stiY').value)] }},
-                "SN": symN,
-                "TL": {
-                    "L": [
-                        { "LN": "Labels", "FR": layerFrames },
-                        { "LN": "Sprites", "FR": spriteInstances }
-                    ]
-                }
-            },
-            "MD": { "V": "BTA 1.2.0", "FRT": userFps, "W": 1280, "H": 720, "ASV": 3 }
-        };
-
-        const spritemapJson = {
-            "ATLAS": {
-                "SPRITES": framesData.map(f => ({ "SPRITE": { "name": f.name, "x": f.x, "y": f.y, "w": f.img.width, "h": f.img.height, "rotated": false } })),
-                "meta": { "app": "Spritemap Convert Web", "version": "22.0.5.191", "image": "spritemap1.png", "format": "RGBA8888", "size": {"w":c.width,"h":c.height}, "resolution": "1" }
-            }
-        };
-
-        const zip = new JSZip();
-        const folder = zip.folder(charN);
-        folder.file("Animation.json", JSON.stringify(animationJson, null, 2));
-        folder.file("spritemap1.json", JSON.stringify(spritemapJson, null, 2));
-        const imgBlob = await new Promise(r => c.toBlob(r));
-        folder.file("spritemap1.png", imgBlob);
-
-        const content = await zip.generateAsync({type:"blob"});
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(content);
-        link.download = `${charN}_Vslice_Pack.zip`;
-        link.click();
-        status.innerText = "¡ZIP generado con éxito con dimensiones optimizadas y dinámicas!";
-    }
-</script>
+<!-- CORRECCIÓN: Ruta apuntando a tu carpeta 'JavaScript' -->
+<script src="JavaScript/script.js"></script>
 </body>
 </html>
