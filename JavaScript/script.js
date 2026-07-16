@@ -270,10 +270,60 @@ async function processAll() {
     }
 
     const userFps = parseFloat(document.getElementById('fps').value) || 24;
+// --- NUEVA LÓGICA DE DETECCIÓN DE FORMATO (V-Slice vs P-Slice) ---
+    const formatMode = document.getElementById('formatMode').value;
+    const offX = parseFloat(document.getElementById('stiX').value) || 0.0;
+    const offY = parseFloat(document.getElementById('stiY').value) || 0.0;
+
+    let stiData = {};
+
+    if (formatMode === 'v-slice') {
+        // Formato estándar con MX
+        stiData = { 
+            "SI": { 
+                "SN": symN, 
+                "FF": 0, 
+                "ST": "G", 
+                "TRP": {"x":0,"y":0}, 
+                "LP": "PO", 
+                "MX": [1.0, 0.0, 0.0, 1.0, offX, offY] 
+            } 
+        };
+    } else {
+        // Nuevo formato P-Slice con M3D (Reemplazando el MX)
+        stiData = { 
+            "SI": { 
+                "SN": symN, 
+                "FF": 0, 
+                "ST": "G", 
+                "TRP": {"x":0,"y":0}, 
+                "LP": "PO", 
+                "M3D": [
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    0.0,
+                    offX, // Offset X (primer 1 solito modificado por ti)
+                    offY, // Offset Y (segundo 1 solito modificado por ti)
+                    0.0,
+                    0.0
+                ] 
+            } 
+        };
+    }
+
     const animationJson = {
         "AN": {
             "N": charN,
-            "STI": { "SI": { "SN": symN, "FF": 0, "ST": "G", "TRP": {"x":0,"y":0}, "LP": "PO", "MX": [1,0,0,1, parseFloat(document.getElementById('stiX').value), parseFloat(document.getElementById('stiY').value)] }},
+            "STI": stiData,
             "SN": symN,
             "TL": {
                 "L": [
@@ -319,7 +369,12 @@ async function processAll() {
     const content = await zip.generateAsync({type:"blob"});
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);
-    link.download = `${charN}_Vslice_Pack.zip`;
+// Cambia el nombre del archivo según el modo seleccionado
+    if (formatMode === 'v-slice') {
+        link.download = `${charN}_Vslice_Pack.zip`;
+    } else {
+        link.download = `${charN}_Pslice_Pack.zip`;
+    }
     link.click();
     
     const savedFrames = framesData.length - uniqueFrames.length;
