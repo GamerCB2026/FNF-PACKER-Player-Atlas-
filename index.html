@@ -39,10 +39,17 @@
         </div>
         <div class="panel">
             <h3>Posición (STI)</h3>
-            <label for="stiX">MX X (Centro 0):</label>
+            <label for="stiX">Offset X (Centro 0):</label>
             <input type="number" id="stiX" value="0">
-            <label for="stiY">MX Y (Centro 0):</label>
+            <label for="stiY">Offset Y (Centro 0):</label>
             <input type="number" id="stiY" value="0">
+            
+            <!-- NUEVO SELECTOR DE FORMATO -->
+            <label for="formatMode">Formato Exportación:</label>
+            <select id="formatMode" style="margin-top: 5px;">
+                <option value="v-slice" selected>V-Slice (MX)</option>
+                <option value="p-slice">P-Slice (M3D)</option>
+            </select>
         </div>
         <div class="panel">
             <h3>Ajustes e Inserción</h3>
