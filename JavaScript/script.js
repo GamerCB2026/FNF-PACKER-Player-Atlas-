@@ -4,34 +4,26 @@ let anims = ["idle", "confirm", "select", "deselect", "slidein", "slideout", "sl
 window.onload = () => {
     updateAnimSelectors();
     setupEventListeners();
+    renderFrameList();
 };
 
-// Configura los escuchas de eventos (removiendo el onclick del HTML)
 function setupEventListeners() {
     document.getElementById('addAnimBtn').addEventListener('click', addNewAnimation);
     document.getElementById('fileInput').addEventListener('change', handleFilesLoad);
     document.getElementById('selectAllBtn').addEventListener('click', () => toggleAll(true));
     document.getElementById('deselectAllBtn').addEventListener('click', () => toggleAll(false));
     document.getElementById('applyBulkBtn').addEventListener('click', applyBulk);
+    document.getElementById('removeSelectedBtn').addEventListener('click', removeSelectedFrames);
     document.getElementById('genBtn').addEventListener('click', processAll);
+    document.getElementById('frameList').addEventListener('change', handleFrameListChange);
+    document.getElementById('frameList').addEventListener('click', handleFrameListClick);
 }
 
 function updateAnimSelectors() {
     const bulkSelect = document.getElementById('bulkAnimSelect');
-    const currentBulkVal = bulkSelect.value;
+    const currentBulkVal = bulkSelect.value || 'idle';
     bulkSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
     if (anims.includes(currentBulkVal)) bulkSelect.value = currentBulkVal;
-
-    framesData.forEach((_, i) => {
-        const indSelect = document.getElementById(`anim_${i}`);
-        if (indSelect) {
-            const currentVal = indSelect.value;
-            indSelect.innerHTML = anims.map(a => `<option value="${a}">${a}</option>`).join('');
-            if (anims.includes(currentVal)) {
-                indSelect.value = currentVal;
-            }
-        }
-    });
 }
 
 function addNewAnimation() {
@@ -43,34 +35,60 @@ function addNewAnimation() {
 
     anims.push(name);
     updateAnimSelectors();
+    renderFrameList();
     input.value = "";
     document.getElementById('status').innerText = `Animación "${name}" añadida.`;
 }
 
-async function handleFilesLoad(e) {
+function syncFrameIndexes() {
+    framesData.forEach((frame, index) => {
+        frame.name = index.toString();
+        if (!frame.anim || !anims.includes(frame.anim)) {
+            frame.anim = 'idle';
+        }
+    });
+}
+
+function renderFrameList() {
     const list = document.getElementById('frameList');
-    
-    // Si es la primera vez que cargamos archivos, quitamos el texto de marcador de posición
+
     if (framesData.length === 0) {
-        list.innerHTML = '';
-    } else {
-        // Si ya hay archivos, removemos cualquier mensaje de texto suelto que haya quedado
-        const placeholder = list.querySelector('p');
-        if (placeholder) placeholder.remove();
+        list.innerHTML = '<p style="text-align:center; padding: 40px; color:#555; font-family: monospace;">[ Arrastra o selecciona tus archivos PNG para empezar ]</p>';
+        document.getElementById('genBtn').disabled = true;
+        document.getElementById('status').innerText = 'Esperando archivos...';
+        return;
     }
 
-    // Convertimos los nuevos archivos cargados en un Array y los ordenamos de forma natural
+    list.innerHTML = '';
+    framesData.forEach((frame, idx) => {
+        const div = document.createElement('div');
+        div.className = 'frame-item';
+        div.innerHTML = `
+            <input type="checkbox" class="frame-cb" data-idx="${idx}">
+            <img src="${frame.img.src}">
+            <span style="font-family:monospace; width:60px;">[${idx}]</span>
+            <select class="frame-anim-select" data-idx="${idx}">
+                ${anims.map(a => `<option value="${a}" ${frame.anim === a ? 'selected' : ''}>${a}</option>`).join('')}
+            </select>
+            <button type="button" class="remove-frame-btn" data-idx="${idx}" title="Eliminar imagen">✕</button>
+        `;
+        list.appendChild(div);
+    });
+
+    document.getElementById('genBtn').disabled = false;
+    document.getElementById('status').innerText = `Total de imágenes cargadas: ${framesData.length}`;
+}
+
+async function handleFilesLoad(e) {
     const newFiles = Array.from(e.target.files).sort((a, b) => 
         a.name.localeCompare(b.name, undefined, { numeric: true })
     );
     
-    // Guardamos el índice donde nos quedamos antes para continuar la numeración consecutiva
     const startIdx = framesData.length;
 
     for (let i = 0; i < newFiles.length; i++) {
         const currentGlobalIdx = startIdx + i;
         
-        // Procesamos la imagen actual
         const img = await new Promise(r => { 
             const reader = new FileReader(); 
             reader.onload = ev => { 
@@ -81,28 +99,11 @@ async function handleFilesLoad(e) {
             reader.readAsDataURL(newFiles[i]); 
         });
 
-        // Guardamos la imagen en nuestro array acumulativo sin perder las anteriores
-        framesData.push({ img, name: currentGlobalIdx.toString(), file: newFiles[i] });
-        
-        // Creamos y agregamos el nuevo elemento visual a la lista existente
-        const div = document.createElement('div');
-        div.className = 'frame-item';
-        div.innerHTML = `
-            <input type="checkbox" class="frame-cb" data-idx="${currentGlobalIdx}">
-            <img src="${img.src}">
-            <span style="font-family:monospace; width:60px;">[${currentGlobalIdx}]</span>
-            <select id="anim_${currentGlobalIdx}">
-                ${anims.map(a => `<option value="${a}" ${currentGlobalIdx === 0 && a === 'idle' ? 'selected' : ''}>${a}</option>`).join('')}
-            </select>
-        `;
-        list.appendChild(div);
+        framesData.push({ img, name: currentGlobalIdx.toString(), file: newFiles[i], anim: 'idle' });
     }
 
-    // Habilitamos el botón de generación y actualizamos el estado
-    document.getElementById('genBtn').disabled = false;
-    document.getElementById('status').innerText = `Total de imágenes cargadas: ${framesData.length}`;
-    
-    // Resetear el input file para que permita volver a cargar el mismo archivo si es necesario
+    syncFrameIndexes();
+    renderFrameList();
     e.target.value = "";
 }
 
@@ -110,15 +111,55 @@ function toggleAll(val) {
     document.querySelectorAll('.frame-cb').forEach(cb => cb.checked = val);
 }
 
-// Corrección para aplicar la animación en bloque
+function handleFrameListChange(e) {
+    if (!e.target.classList.contains('frame-anim-select')) return;
+
+    const idx = Number(e.target.dataset.idx);
+    if (!Number.isNaN(idx) && framesData[idx]) {
+        framesData[idx].anim = e.target.value;
+    }
+}
+
+function handleFrameListClick(e) {
+    const btn = e.target.closest('.remove-frame-btn');
+    if (!btn) return;
+
+    removeFrame(Number(btn.dataset.idx));
+}
+
+function removeFrame(index) {
+    if (!Number.isInteger(index) || !framesData[index]) return;
+
+    framesData.splice(index, 1);
+    syncFrameIndexes();
+    renderFrameList();
+}
+
+function removeSelectedFrames() {
+    const selectedIndices = Array.from(document.querySelectorAll('.frame-cb:checked'))
+        .map(cb => Number(cb.dataset.idx))
+        .sort((a, b) => b - a);
+
+    if (selectedIndices.length === 0) return alert("Selecciona primero los cuadros.");
+
+    selectedIndices.forEach(index => framesData.splice(index, 1));
+    syncFrameIndexes();
+    renderFrameList();
+}
+
 function applyBulk() {
     const val = document.getElementById('bulkAnimSelect').value;
     const selected = document.querySelectorAll('.frame-cb:checked');
-    if(selected.length === 0) return alert("Selecciona primero los cuadros.");
+    if (selected.length === 0) return alert("Selecciona primero los cuadros.");
+
     selected.forEach(cb => {
-        const selectElement = document.getElementById(`anim_${cb.dataset.idx}`);
-        if(selectElement) {
-            selectElement.value = val;
+        const idx = Number(cb.dataset.idx);
+        if (!Number.isNaN(idx) && framesData[idx]) {
+            framesData[idx].anim = val;
+            const selectElement = document.querySelector(`.frame-anim-select[data-idx="${idx}"]`);
+            if (selectElement) {
+                selectElement.value = val;
+            }
         }
     });
 }
@@ -220,8 +261,7 @@ async function processAll() {
     let currentAnimDuration = 0;
 
     framesData.forEach((f, i) => {
-        const selectElement = document.getElementById(`anim_${i}`);
-        const assignedAnim = selectElement ? selectElement.value : "idle";
+        const assignedAnim = f.anim || "idle";
 
         // 1. Añadimos el registro a la línea de tiempo de Sprites secuencialmente
         spriteInstances.push({ 
