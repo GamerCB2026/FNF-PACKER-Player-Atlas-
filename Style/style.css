@@ -283,6 +283,38 @@ input[type="file"]:hover {
     flex-grow: 1;
 }
 
+.btn-danger {
+    color: #ff8ca3;
+    border-color: rgba(255, 140, 163, 0.35);
+}
+
+.btn-danger:hover {
+    color: #fff;
+    border-color: #ff8ca3;
+    box-shadow: 0 0 10px rgba(255, 140, 163, 0.2);
+}
+
+.remove-frame-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 0, 127, 0.35);
+    color: var(--neon-pink);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.remove-frame-btn:hover {
+    background: rgba(255, 0, 127, 0.15);
+    color: #fff;
+    box-shadow: 0 0 8px rgba(255, 0, 127, 0.2);
+}
+
 /* Botones Principales */
 .btn-main {
     background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
