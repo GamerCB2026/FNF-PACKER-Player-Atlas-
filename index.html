@@ -2,104 +2,401 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <title>FNF PACKER (player atlas) — V2.0.0</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>FNF Packer (Player Atlas) — v3.0.0</title>
     <meta name="description" content="FNF PACKER. Lugar para crear tus spritemaps y animations en FNF especialmente para el Player Select.">
-    
     <meta name="google" content="notranslate">
-    <link rel="icon" type="image/png" href="./favicon.png">
     <meta name="google-site-verification" content="HoPFeGB2vyj6WGcWtANG3RN5dgnxbF1lW8QlIJo7qxg" />
-    
-    <!-- Librería externa para empaquetar el ZIP -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
- 
+    <link rel="icon" type="image/png" href="./favicon.png">
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#00ffcc">
+    <meta name="theme-color" content="#0a1426">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
 
-    <!-- CORRECCIÓN: Ruta apuntando a tu carpeta 'Style' -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="Style/style.css">
 </head>
 <body>
 
-<div class="container">
-    <h2>FNF Packer (Player Atlas)<span style="font-size: 14px; color: #ff007f; text-shadow: none;">v2.0.0</span></h2>
-    
-    <div class="config-grid">
-        <div class="panel">
-            <h3>Identidad</h3>
-            <label for="charName">Nombre Carpeta:</label>
-            <input type="text" id="charName" value="bf_custom">
-            <label for="symName">Símbolo (Symbol):</label>
-            <input type="text" id="symName" value="BOYFRIEND CS">
+<!-- ============ BARRA SUPERIOR ============ -->
+<header class="topbar">
+    <button id="menuBtn" class="hamburger" aria-label="Abrir menú" aria-controls="drawer" aria-expanded="false">
+        <span></span><span></span><span></span>
+    </button>
+    <a class="brand" href="#generador">
+        <img src="favicon.png" alt="" width="28" height="28">
+        <span class="brand-text"><strong>FNF Packer</strong><small>Player Atlas</small></span>
+    </a>
+    <nav class="crumb" id="crumb" aria-live="polite">Crear Spritemaps</nav>
+    <span class="version-tag">v3.0.0</span>
+</header>
+
+<!-- ============ MENÚ LATERAL ============ -->
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-head">
+        <span class="drawer-title">Herramientas</span>
+        <button class="icon-btn" id="drawerClose" aria-label="Cerrar menú">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+    </div>
+    <nav class="drawer-nav">
+        <a class="nav-item" data-route="generador" href="#generador">
+            <svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="3" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+            <span><b>Crear Spritemaps</b><small>Frames PNG → atlas + Animation.json</small></span>
+        </a>
+        <div class="nav-sub">
+            <a class="nav-subitem" data-route="generador" href="#generador">Generador</a>
+            <a class="nav-subitem" data-route="agregar" href="#agregar">Agregar Spritemap</a>
         </div>
-        <div class="panel">
-            <h3>Posición (STI)</h3>
-            <label for="stiX">Offset X (Centro 0):</label>
-            <input type="number" id="stiX" value="0">
-            <label for="stiY">Offset Y (Centro 0):</label>
-            <input type="number" id="stiY" value="0">
-            
-            <!-- NUEVO SELECTOR DE FORMATO -->
-            <label for="formatMode">Formato Exportación:</label>
-            <select id="formatMode" style="margin-top: 5px;">
-                <option value="v-slice" selected>V-Slice (MX)</option>
-                <option value="p-slice">P-Slice (M3D)</option>
-            </select>
-        </div>
-        <div class="panel">
-            <h3>Ajustes e Inserción</h3>
-            <label for="fps">FPS de Animación:</label>
-            <input type="number" id="fps" value="24">
-            <div class="custom-anim-box">
-                <input type="text" id="newAnimName" placeholder="Nueva animación...">
-                <button class="btn-add" id="addAnimBtn">Añadir</button>
+        <a class="nav-item" data-route="partes" href="#partes">
+            <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 8v7M12 10l-5 3M12 10l5 3M12 15l-4 6M12 15l4 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <span><b>Crear Spritemaps en Partes</b><small>Personaje por partes del cuerpo</small></span>
+        </a>
+    </nav>
+
+    <div class="drawer-foot">
+        <div class="creator">
+            <img src="Credits/GamerCB.jpg" alt="GamerCB" class="creator-avatar">
+            <div>
+                <p>Creador del FNF Packer. Cualquiera que veas con esta página no es de ellos, es mía, de GamerCB. Suscríbete a mi canal para más páginas como esta.</p>
+                <a href="https://www.youtube.com/@GamerCB2026/videos" target="_blank" rel="noopener" class="creator-link">GamerCB en YouTube</a>
             </div>
         </div>
+        <div class="more-links">
+            <span>Más páginas</span>
+            <a href="https://gamercb2026.github.io/Chart-Convert-V-Slice.github.io/" target="_blank" rel="noopener">FNF Chart Convert</a>
+            <a href="https://gamercb2026.github.io/Convert-Stage-Psych-A-V-slice-V1/" target="_blank" rel="noopener">FNF Stage Convert</a>
+            <a href="https://sites.google.com/view/fnftumod-gamercb/p%C3%A1gina-principal?authuser=1" target="_blank" rel="noopener">TU MOD FNF</a>
+        </div>
+    </div>
+</aside>
+
+<main class="app">
+
+    <!-- ===== Pestañas de Crear Spritemaps ===== -->
+    <div class="tabs" id="spritemapTabs">
+        <a class="tab" data-route="generador" href="#generador">Generador</a>
+        <a class="tab" data-route="agregar" href="#agregar">Agregar Spritemap</a>
     </div>
 
-    <div class="panel">
-        <h3>1. Cargar Imágenes (PNG)</h3>
-        <input type="file" id="fileInput" multiple accept="image/png">
-    </div>
+    <!-- ================= VISTA: GENERADOR ================= -->
+    <section class="view" id="view-generador" data-title="Crear Spritemaps / Generador">
+        <div class="layout-3">
+            <aside class="col col-left">
+                <div class="card">
+                    <h3 class="card-title">Proyecto</h3>
+                    <label class="field"><span>Nombre de carpeta</span><input type="text" id="charName" value="bf_custom"></label>
+                    <label class="field"><span>Símbolo (Symbol)</span><input type="text" id="symName" value="BOYFRIEND CS"></label>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Exportación</h3>
+                    <label class="field"><span>Formato</span>
+                        <select id="formatMode">
+                            <option value="v-slice" selected>V-Slice (MX)</option>
+                            <option value="p-slice">P-Slice (M3D)</option>
+                        </select>
+                    </label>
+                    <div class="field-row">
+                        <label class="field"><span>Offset X (STI)</span><input type="number" id="stiX" value="0"></label>
+                        <label class="field"><span>Offset Y (STI)</span><input type="number" id="stiY" value="0"></label>
+                    </div>
+                    <label class="field"><span>FPS de animación</span><input type="number" id="fps" value="24" min="1" max="120"></label>
+                </div>
+                <div class="card">
+                    <h3 class="card-title">Animaciones</h3>
+                    <ul class="anim-list" id="animList"></ul>
+                    <div class="inline-add">
+                        <input type="text" id="newAnimName" placeholder="Nueva animación…">
+                        <button class="btn btn-ghost" id="addAnimBtn">Añadir</button>
+                    </div>
+                </div>
+            </aside>
 
-    <div class="bulk-actions">
-        <strong>Selección múltiple</strong>
-        <button class="btn-sec" id="selectAllBtn">Marcar Todos</button>
-        <button class="btn-sec" id="deselectAllBtn">Desmarcar</button>
-        <div style="border-left: 1px solid rgba(255, 255, 255, 0.1); height: 30px; margin: 0 10px;"></div>
-        <span style="color: #a0aec0; font-size: 11px; text-transform: uppercase;">Asignar:</span>
-        <select id="bulkAnimSelect"></select>
-        <button class="btn-main" id="applyBulkBtn" style="width: auto; padding: 8px 20px; font-size: 12px; box-shadow: none;">Aplicar</button>
-        <button class="btn-sec btn-danger" id="removeSelectedBtn">Eliminar Seleccionados</button>
-    </div>
+            <div class="col col-main">
+                <label class="dropzone" id="framesDrop">
+                    <input type="file" id="fileInput" multiple accept="image/png">
+                    <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <span><b>Cargar imágenes PNG</b> — arrastra aquí o haz clic. Se ordenan por nombre (0, 1, 2…).</span>
+                </label>
 
-    <div class="frame-list" id="frameList">
-        <p style="text-align:center; padding: 40px; color:#555; font-family: monospace;">[ Arrastra o selecciona tus archivos PNG para empezar ]</p>
-    </div>
+                <div class="toolbar" id="bulkBar">
+                    <div class="tb-group">
+                        <button class="btn btn-ghost btn-sm" id="selectAllBtn">Marcar todos</button>
+                        <button class="btn btn-ghost btn-sm" id="deselectAllBtn">Desmarcar</button>
+                    </div>
+                    <div class="tb-group">
+                        <span class="tb-label">Asignar</span>
+                        <select id="bulkAnimSelect" class="sel-sm"></select>
+                        <button class="btn btn-primary btn-sm" id="applyBulkBtn">Aplicar</button>
+                    </div>
+                    <div class="tb-group">
+                        <button class="btn btn-ghost btn-sm" id="moveUpBtn" title="Mover seleccionados antes">Mover ←</button>
+                        <button class="btn btn-ghost btn-sm" id="moveDownBtn" title="Mover seleccionados después">Mover →</button>
+                        <button class="btn btn-ghost btn-sm" id="duplicateBtn">Duplicar</button>
+                    </div>
+                    <button class="btn btn-danger btn-sm" id="removeSelectedBtn">Eliminar seleccionados</button>
+                    <span class="tb-count" id="selCount"></span>
+                </div>
 
-    <button id="genBtn" class="btn-main" disabled>GENERAR PACK COMPLETO</button>
-    <div id="status">Esperando archivos...</div>
-</div> <!-- AQUÍ SÍ SE CIERRA EL CONTAINER CORRECTAMENTE -->
+                <div class="frame-list" id="frameList"></div>
+            </div>
 
-<canvas id="c" style="display:none;"></canvas>
+            <aside class="col col-right">
+                <div class="card preview-card">
+                    <h3 class="card-title">Vista previa</h3>
+                    <div class="preview-box"><canvas id="genPreview"></canvas></div>
+                    <div class="player-row">
+                        <button class="btn btn-ghost btn-icon" id="genPlay" title="Reproducir / pausar">▶</button>
+                        <select id="genPreviewAnim" class="sel-sm"></select>
+                        <span class="mono small" id="genFrameInfo">0 / 0</span>
+                    </div>
+                </div>
+                <div class="card">
+                    <button id="genBtn" class="btn btn-primary btn-block btn-lg" disabled>Generar pack completo</button>
+                    <div id="status" class="status">Esperando archivos…</div>
+                    <p class="hint">Incluye <code>Animation.json</code>, <code>spritemap1.json</code> y <code>spritemap1.png</code> dentro de una carpeta con el nombre del proyecto. Las imágenes repetidas se guardan una sola vez.</p>
+                </div>
+            </aside>
+        </div>
+    </section>
 
-<!-- Tarjeta Flotante de Créditos de GamerCB -->
-<div class="creator-card">
-    <img src="Credits/GamerCB.jpg" alt="GamerCB" class="creator-avatar">
-    <div class="creator-info">
-        <p class="creator-desc">
-            Creador de el FNF Packer cualquiera que vean con esta pagina no es de ellos es mia de GamerCB suscribanse a mi canal para mas paginas como esta
-        </p>
-        <a href="https://www.youtube.com/@GamerCB2026/videos" target="_blank" class="creator-link">GamerCB</a>
-    </div>
-</div>
+    <!-- ================= VISTA: AGREGAR SPRITEMAP ================= -->
+    <section class="view" id="view-agregar" data-title="Crear Spritemaps / Agregar Spritemap">
+        <div class="layout-2">
+            <aside class="col col-left">
+                <label class="dropzone dropzone-tall" id="atlasDrop">
+                    <input type="file" id="atlasInput" multiple accept=".png,.json,.zip,application/zip,application/json,image/png">
+                    <svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+                    <span><b>Seleccionar spritemap</b><br>PNG + <code>spritemap1.json</code> + <code>Animation.json</code>, o el <code>.zip</code> completo.</span>
+                </label>
+                <label class="btn btn-ghost btn-block" for="atlasFolderInput">Cargar una carpeta…</label>
+                <input type="file" id="atlasFolderInput" webkitdirectory multiple hidden>
 
-<!-- CORRECCIÓN: Ruta apuntando a tu carpeta 'JavaScript' -->
-<script src="JavaScript/script.js"></script>
+                <div class="card" id="atlasInfoCard" hidden>
+                    <h3 class="card-title">Información</h3>
+                    <dl class="info-list" id="atlasInfo"></dl>
+                    <div class="stack">
+                        <button class="btn btn-primary btn-block" id="atlasEditBtn">Editar en el Generador</button>
+                        <button class="btn btn-ghost btn-block" id="atlasMergeBtn">Fusionar con el proyecto actual</button>
+                        <button class="btn btn-ghost btn-block" id="atlasPartsBtn" hidden>Abrir en Crear por Partes</button>
+                        <button class="btn btn-ghost btn-block" id="atlasClearBtn">Quitar</button>
+                    </div>
+                    <p class="hint">“Editar” reemplaza los frames del Generador con este spritemap. “Fusionar” los agrega al final, para juntar varios spritemaps en uno.</p>
+                </div>
+            </aside>
+
+            <div class="col col-main">
+                <div class="card preview-card" id="atlasPreviewCard">
+                    <div class="card-head">
+                        <h3 class="card-title">Animación</h3>
+                        <div class="player-row">
+                            <button class="btn btn-ghost btn-icon" id="atlasPlay" title="Reproducir / pausar">▶</button>
+                            <select id="atlasAnimSelect" class="sel-sm"></select>
+                            <input type="range" id="atlasScrub" min="0" max="0" value="0">
+                            <span class="mono small" id="atlasFrameInfo">0 / 0</span>
+                        </div>
+                    </div>
+                    <div class="preview-box preview-lg"><canvas id="atlasPreview"></canvas>
+                        <div class="empty-state" id="atlasEmpty">Carga un spritemap para ver sus partes y su animación.</div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="subtabs" id="atlasSubtabs">
+                        <button class="subtab active" data-pane="sprites">Partes (sprites)</button>
+                        <button class="subtab" data-pane="symbols">Símbolos</button>
+                        <button class="subtab" data-pane="labels">Animaciones</button>
+                    </div>
+                    <div class="pane" id="pane-sprites"><div class="thumb-grid" id="atlasSprites"></div></div>
+                    <div class="pane" id="pane-symbols" hidden><ul class="plain-list" id="atlasSymbols"></ul></div>
+                    <div class="pane" id="pane-labels" hidden><ul class="plain-list" id="atlasLabels"></ul></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ================= VISTA: CREAR POR PARTES ================= -->
+    <section class="view" id="view-partes" data-title="Crear Spritemaps en Partes">
+        <div class="pe">
+            <div class="pe-main">
+                <div class="pe-toolbar">
+                    <div class="seg" id="toolSeg">
+                        <button class="seg-btn active" data-tool="move" title="Mover (V)">Mover</button>
+                        <button class="seg-btn" data-tool="rotate" title="Rotar (R)">Rotar</button>
+                        <button class="seg-btn" data-tool="scale" title="Escalar (S)">Escalar</button>
+                        <button class="seg-btn" data-tool="pivot" title="Pivote (P)">Pivote</button>
+                    </div>
+                    <div class="tb-group">
+                        <button class="btn btn-ghost btn-sm btn-icon" id="undoBtn" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">↶</button>
+                        <button class="btn btn-ghost btn-sm btn-icon" id="redoBtn" title="Rehacer (Ctrl+Y)" aria-label="Rehacer">↷</button>
+                        <button class="btn btn-ghost btn-sm" id="zoomFit" title="Centrar la vista">Centrar</button>
+                        <button class="btn btn-ghost btn-sm" id="gestureBtn" title="Qué mueven los 2 dedos">2 dedos: Vista</button>
+                        <button class="btn btn-ghost btn-sm" id="onionBtn" aria-pressed="false" title="Papel cebolla">Cebolla</button>
+                    </div>
+                </div>
+
+                <div class="stage-wrap" id="stageWrap"><canvas id="partsStage"></canvas>
+                    <div class="empty-state" id="partsEmpty">
+                        <div>
+                            <p>Agrega las imágenes de las partes del cuerpo o abre un spritemap hecho por partes.</p>
+                            <div class="stack-row center">
+                                <label class="btn btn-primary" for="piecesInput">Agregar partes</label>
+                                <label class="btn btn-ghost" for="peOpenInput">Abrir spritemap</label>
+                            </div>
+                        </div>
+                    </div>
+                    <span class="stage-zoom mono" id="zoomLabel">100%</span>
+                </div>
+
+                <div class="pe-transport">
+                    <select id="tlAnimSelect" aria-label="Animación"></select>
+                    <div class="tb-group nowrap">
+                        <button class="btn btn-ghost btn-icon" id="tlPrev" aria-label="Frame anterior">◀</button>
+                        <button class="btn btn-primary btn-icon" id="tlPlay" aria-label="Reproducir">▶</button>
+                        <button class="btn btn-ghost btn-icon" id="tlNext" aria-label="Frame siguiente">▶|</button>
+                    </div>
+                    <span class="mono small" id="tlFrameInfo">0 / 0</span>
+                </div>
+                <input type="range" id="tlScrub" class="scrub" min="0" max="0" value="0" aria-label="Frame">
+
+                <div class="pe-keybar" id="keyBar">
+                    <button class="btn btn-ghost btn-sm" id="keyAdd" title="Crear keyframe en la capa (K)">+ Clave</button>
+                    <button class="btn btn-ghost btn-sm" id="keyBlank" title="Keyframe vacío">Vacío</button>
+                    <button class="btn btn-ghost btn-sm" id="keyDel" title="Quitar keyframe (Supr)">− Clave</button>
+                    <select id="keyTween" class="sel-sm" aria-label="Interpolación">
+                        <option value="">Sin interpolar</option>
+                        <option value="linear">Interpolar: lineal</option>
+                        <option value="easeInOut">Interpolar: suave</option>
+                        <option value="easeIn">Interpolar: acelerar</option>
+                        <option value="easeOut">Interpolar: frenar</option>
+                    </select>
+                    <button class="btn btn-ghost btn-sm" id="poseCopy">Copiar</button>
+                    <button class="btn btn-ghost btn-sm" id="posePaste">Pegar</button>
+                </div>
+                <div class="tl-scroll" id="tlScroll"><canvas id="tlCanvas"></canvas></div>
+            </div>
+
+            <div class="pe-panels" id="pePanels">
+                <section class="sheet" data-sheet="piezas">
+                    <header class="sheet-head"><h3>Piezas</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
+                    <div class="sheet-body">
+                        <label class="dropzone dropzone-sm" id="piecesDrop">
+                            <input type="file" id="piecesInput" multiple accept="image/png,image/*">
+                            <span><b>Agregar partes (PNG)</b><br>cabeza, ojos, boca, brazos, piernas…</span>
+                        </label>
+                        <p class="hint" id="piecesHint">Toca una pieza para ponerla en la capa seleccionada, en el frame actual.</p>
+                        <div class="piece-grid" id="pieceGrid"></div>
+                    </div>
+                </section>
+
+                <section class="sheet" data-sheet="capas">
+                    <header class="sheet-head"><h3>Capas</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
+                    <div class="sheet-body">
+                        <ul class="layer-list" id="layerList"></ul>
+                        <div class="stack-row"><button class="btn btn-ghost btn-sm" id="layerAdd">+ Capa</button></div>
+                        <p class="hint">La capa de arriba se dibuja al frente.</p>
+                    </div>
+                </section>
+
+                <section class="sheet" data-sheet="props">
+                    <header class="sheet-head"><h3>Propiedades <span class="muted" id="inspName">—</span></h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
+                    <div class="sheet-body" id="inspector">
+                        <label class="field"><span>Pieza</span><select id="inspSymbol"></select></label>
+                        <div class="field-row">
+                            <label class="field"><span>X</span><input type="number" inputmode="decimal" step="1" data-prop="x"></label>
+                            <label class="field"><span>Y</span><input type="number" inputmode="decimal" step="1" data-prop="y"></label>
+                        </div>
+                        <div class="field-row">
+                            <label class="field"><span>Rotación °</span><input type="number" inputmode="decimal" step="1" data-prop="r"></label>
+                            <label class="field"><span>Sesgo °</span><input type="number" inputmode="decimal" step="1" data-prop="skew"></label>
+                        </div>
+                        <div class="field-row">
+                            <label class="field"><span>Escala X</span><input type="number" inputmode="decimal" step="0.05" data-prop="sx"></label>
+                            <label class="field"><span>Escala Y</span><input type="number" inputmode="decimal" step="0.05" data-prop="sy"></label>
+                        </div>
+                        <div class="field-row">
+                            <label class="field"><span>Pivote X</span><input type="number" inputmode="decimal" step="1" data-prop="px"></label>
+                            <label class="field"><span>Pivote Y</span><input type="number" inputmode="decimal" step="1" data-prop="py"></label>
+                        </div>
+                        <label class="field"><span>Opacidad</span><input type="range" min="0" max="1" step="0.05" data-prop="a"></label>
+                        <div class="stack-row">
+                            <button class="btn btn-ghost btn-sm" id="elFlip">Voltear ↔</button>
+                            <button class="btn btn-ghost btn-sm" id="elUp">Subir</button>
+                            <button class="btn btn-ghost btn-sm" id="elDown">Bajar</button>
+                            <button class="btn btn-danger btn-sm" id="elDel">Quitar</button>
+                        </div>
+                        <p class="hint">Los cambios crean un keyframe en el frame actual de la capa. En el celular: 1 dedo usa la herramienta; con “2 dedos: Pieza” pellizca para escalar y gira para rotar.</p>
+                    </div>
+                </section>
+
+                <section class="sheet" data-sheet="anims">
+                    <header class="sheet-head"><h3>Animaciones</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
+                    <div class="sheet-body">
+                        <ul class="plain-list" id="animListParts"></ul>
+                        <div class="field-row">
+                            <label class="field"><span>Frames de la animación</span><input type="number" inputmode="numeric" id="animLength" min="1" max="600"></label>
+                            <label class="field"><span>FPS</span><input type="number" inputmode="numeric" id="pFps" value="24" min="1" max="120"></label>
+                        </div>
+                        <div class="stack-row">
+                            <button class="btn btn-ghost btn-sm" id="animAdd">+ Animación</button>
+                            <button class="btn btn-ghost btn-sm" id="animRename">Renombrar</button>
+                            <button class="btn btn-ghost btn-sm" id="animDup">Duplicar</button>
+                            <button class="btn btn-danger btn-sm" id="animDel">Eliminar</button>
+                        </div>
+                        <label class="check"><input type="checkbox" id="tlLoop" checked> Repetir al reproducir</label>
+                    </div>
+                </section>
+
+                <section class="sheet" data-sheet="export">
+                    <header class="sheet-head"><h3>Exportar</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
+                    <div class="sheet-body">
+                        <label class="field"><span>Nombre (AN.N)</span><input type="text" id="pName" value="personaje" autocomplete="off"></label>
+                        <label class="field"><span>Símbolo principal (AN.SN)</span><input type="text" id="pSymbol" value="personaje" autocomplete="off"></label>
+                        <label class="field"><span>Nombre del zip / carpeta</span><input type="text" id="pFolder" value="personaje" autocomplete="off"></label>
+                        <label class="check"><input type="checkbox" id="pSti"> Agregar STI con offset (como el Generador)</label>
+                        <div class="field-row" id="pStiRow" hidden>
+                            <label class="field"><span>Formato STI</span><select id="pFormat"><option value="v-slice">V-Slice (MX)</option><option value="p-slice">P-Slice (M3D)</option></select></label>
+                            <div class="field-row">
+                                <label class="field"><span>X</span><input type="number" inputmode="decimal" id="pStiX" value="0"></label>
+                                <label class="field"><span>Y</span><input type="number" inputmode="decimal" id="pStiY" value="0"></label>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-block btn-lg" id="partsExportBtn" disabled>Generar pack por partes</button>
+                        <label class="btn btn-ghost btn-block" for="peOpenInput">Abrir spritemap por partes…</label>
+                        <input type="file" id="peOpenInput" multiple accept=".zip,.json,.png,application/zip,application/json,image/png" hidden>
+                        <button class="btn btn-ghost btn-block" id="peNewBtn">Nuevo proyecto</button>
+                        <div class="status" id="partsStatus">Sin partes todavía.</div>
+                        <p class="hint">Se exporta con el mismo formato de Adobe Animate (Better Texture Atlas): <code>Animation.json</code> con símbolos por pieza, capas y matrices <code>MX</code>, más <code>spritemap1.json</code> y <code>spritemap1.png</code>.</p>
+                    </div>
+                </section>
+            </div>
+
+            <nav class="pe-tabbar" id="peTabbar" aria-label="Paneles">
+                <button data-open="piezas"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.5 13v7M13 16.5h7"/></svg><span>Piezas</span></button>
+                <button data-open="capas"><svg viewBox="0 0 24 24"><path d="M12 4l8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4M4 16l8 4 8-4"/></svg><span>Capas</span></button>
+                <button data-open="props"><svg viewBox="0 0 24 24"><path d="M5 7h9M18 7h1M5 17h1M10 17h9"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg><span>Propiedades</span></button>
+                <button data-open="anims"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9l5 3-5 3z"/></svg><span>Animaciones</span></button>
+                <button data-open="export"><svg viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg><span>Exportar</span></button>
+            </nav>
+        </div>
+    </section>
+</main>
+
+<script src="JavaScript/lib/jszip.min.js"></script>
+<script src="JavaScript/core/utils.js"></script>
+<script src="JavaScript/core/bta-format.js"></script>
+<script src="JavaScript/core/matrix.js"></script>
+<script src="JavaScript/core/packer.js"></script>
+<script src="JavaScript/core/atlas-format.js"></script>
+<script src="JavaScript/core/atlas-io.js"></script>
+<script src="JavaScript/core/atlas-renderer.js"></script>
+<script src="JavaScript/modules/frames-editor.js"></script>
+<script src="JavaScript/modules/atlas-loader.js"></script>
+<script src="JavaScript/modules/parts-doc.js"></script>
+<script src="JavaScript/modules/parts-editor.js"></script>
+<script src="JavaScript/app.js"></script>
 </body>
 </html>
