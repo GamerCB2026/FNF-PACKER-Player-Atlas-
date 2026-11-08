@@ -89,10 +89,12 @@ window.FNF = window.FNF || {};
 
     /* Ajusta un canvas al tamaño de su contenedor respetando devicePixelRatio */
     U.fitCanvas = (canvas) => {
-        const rect = canvas.parentElement.getBoundingClientRect();
-        const dpr = window.devicePixelRatio || 1;
-        const w = Math.max(50, Math.floor(rect.width));
-        const h = Math.max(50, Math.floor(rect.height));
+        // Usa el área interior del contenedor (sin bordes). Con getBoundingClientRect
+        // el canvas medía 2px más que su caja y la hacía crecer en cada frame.
+        const box = canvas.parentElement;
+        const dpr = Math.min(3, window.devicePixelRatio || 1);
+        const w = Math.max(50, Math.floor(box.clientWidth));
+        const h = Math.max(50, Math.floor(box.clientHeight));
         if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
             canvas.width = Math.round(w * dpr);
             canvas.height = Math.round(h * dpr);

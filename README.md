@@ -28,9 +28,10 @@ BY: GamerCB
 
 Estructura: `index.html`, `Style/style.css`, `JavaScript/core/*` (formato, empaquetado, lectura y reproductor del atlas), `JavaScript/modules/*` (cada sección) y `JavaScript/app.js` (menú y rutas). Sin compilación: funciona directo en GitHub Pages.
 
-# Novedades v4.0.0
+## Celular y formato Adobe Animate
 
 - Pensada primero para celular: botones de 44px, hojas inferiores (Piezas, Capas, Propiedades, Animaciones, Exportar), gestos táctiles en el lienzo (1 dedo usa la herramienta, 2 dedos pellizcan para zoom o, en modo "Pieza", escalan y giran la pieza), línea de tiempo que se desliza con el dedo, deshacer/rehacer y botones en lugar de doble clic o teclado.
 - **Crear Spritemaps en Partes** ahora trabaja directamente con el formato de Adobe Animate / Better Texture Atlas: capas, keyframes, símbolos por pieza (`SD`), instancias `SI` con `TRP`, `LP`, `MX`. Un spritemap hecho en Animate se abre, se edita y se vuelve a exportar idéntico.
 - Interpolación entre keyframes (lineal, suave, acelerar, frenar): se exporta horneada a frames de 1, como lo hace Animate, y se guarda en `fnf-packer.json` para seguir editándola.
 - **Agregar Spritemap** reproduce sprites rotados (`rotated: true`) y símbolos anidados, y permite elegir los archivos por separado.
+- Vista previa de la pantalla de inicio corregida en celular: ya no crece sin parar; tiene altura contenida y cabe en pantalla (vertical y horizontal).

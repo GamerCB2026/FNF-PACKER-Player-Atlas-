@@ -554,9 +554,9 @@ window.FNF = window.FNF || {};
             }
         }
         const pw = cv.width, ph = cv.height;
-        const r = cv.parentElement.getBoundingClientRect();
+        const box = cv.parentElement;
         const dpr = Math.min(2, window.devicePixelRatio || 1);
-        const W = Math.max(50, Math.floor(r.width)), H = Math.max(50, Math.floor(r.height));
+        const W = Math.max(50, Math.floor(box.clientWidth)), H = Math.max(50, Math.floor(box.clientHeight));
         if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
         if (!st.dirty && pw === cv.width && ph === cv.height) return;
         st.dirty = false;
