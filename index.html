@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-    <title>FNF Packer (Player Atlas) — v3.0.0</title>
+    <title>FNF Packer (Player Atlas) — v3.0.1</title>
     <meta name="description" content="FNF PACKER. Lugar para crear tus spritemaps y animations en FNF especialmente para el Player Select.">
     <meta name="google" content="notranslate">
     <meta name="google-site-verification" content="HoPFeGB2vyj6WGcWtANG3RN5dgnxbF1lW8QlIJo7qxg" />
@@ -17,7 +17,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="Style/style.css">
+    <link rel="stylesheet" href="Style/style.css?v=20261114d">
 </head>
 <body>
 
@@ -31,7 +31,7 @@
         <span class="brand-text"><strong>FNF Packer</strong><small>Player Atlas</small></span>
     </a>
     <nav class="crumb" id="crumb" aria-live="polite">Crear Spritemaps</nav>
-    <span class="version-tag">v3.0.0</span>
+    <span class="version-tag">v3.0.1</span>
 </header>
 
 <!-- ============ MENÚ LATERAL ============ -->
@@ -118,9 +118,9 @@
 
             <div class="col col-main">
                 <label class="dropzone" id="framesDrop">
-                    <input type="file" id="fileInput" multiple accept="image/png">
+                    <input type="file" id="fileInput" multiple accept="image/png,.png,.astc">
                     <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 16V4M7 9l5-5 5 5M4 20h16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <span><b>Cargar imágenes PNG</b> — arrastra aquí o haz clic. Se ordenan por nombre (0, 1, 2…).</span>
+                    <span><b>Cargar imágenes PNG o ASTC</b> — arrastra aquí o haz clic. Se ordenan por nombre (0, 1, 2…).</span>
                 </label>
 
                 <div class="toolbar" id="bulkBar">
@@ -169,9 +169,9 @@
         <div class="layout-2">
             <aside class="col col-left">
                 <label class="dropzone dropzone-tall" id="atlasDrop">
-                    <input type="file" id="atlasInput" multiple accept=".png,.json,.zip,application/zip,application/json,image/png">
+                    <input type="file" id="atlasInput" multiple accept=".png,.astc,.json,.zip,application/zip,application/json,image/png">
                     <svg viewBox="0 0 24 24" width="26" height="26"><path d="M4 7h6l2 2h8v10H4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
-                    <span><b>Seleccionar spritemap</b><br>PNG + <code>spritemap1.json</code> + <code>Animation.json</code>, o el <code>.zip</code> completo.</span>
+                    <span><b>Seleccionar spritemap</b><br>PNG o ASTC + <code>spritemap1.json</code> + <code>Animation.json</code>, o el <code>.zip</code> completo.</span>
                 </label>
                 <label class="btn btn-ghost btn-block" for="atlasFolderInput">Cargar una carpeta…</label>
                 <input type="file" id="atlasFolderInput" webkitdirectory multiple hidden>
@@ -241,7 +241,7 @@
                 <div class="stage-wrap" id="stageWrap"><canvas id="partsStage"></canvas>
                     <div class="empty-state" id="partsEmpty">
                         <div>
-                            <p>Agrega las imágenes de las partes del cuerpo o abre un spritemap hecho por partes.</p>
+                            <p>Agrega las imágenes de las partes del cuerpo, abre un spritemap hecho por partes o un <b>.psd</b> / <b>.ipv</b> (ibisPaint) con capas y carpetas de animación.</p>
                             <div class="stack-row center">
                                 <label class="btn btn-primary" for="piecesInput">Agregar partes</label>
                                 <label class="btn btn-ghost" for="peOpenInput">Abrir spritemap</label>
@@ -275,6 +275,8 @@
                     </select>
                     <button class="btn btn-ghost btn-sm" id="poseCopy">Copiar</button>
                     <button class="btn btn-ghost btn-sm" id="posePaste">Pegar</button>
+                    <button class="btn btn-ghost btn-sm" id="rangeBtn" aria-pressed="false" title="Elegir rango con dos toques (inicio y fin). En PC: clic y Shift+clic">Rango</button>
+                    <button class="btn btn-ghost btn-sm" id="splitAnimBtn" disabled title="Separar los frames seleccionados como nueva animación">Separar…</button>
                 </div>
                 <div class="tl-scroll" id="tlScroll"><canvas id="tlCanvas"></canvas></div>
             </div>
@@ -284,8 +286,8 @@
                     <header class="sheet-head"><h3>Piezas</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
                     <div class="sheet-body">
                         <label class="dropzone dropzone-sm" id="piecesDrop">
-                            <input type="file" id="piecesInput" multiple accept="image/png,image/*">
-                            <span><b>Agregar partes (PNG)</b><br>cabeza, ojos, boca, brazos, piernas…</span>
+                            <input type="file" id="piecesInput" multiple accept="image/png,image/*,.png,.astc,.psd,.ipv">
+                            <span><b>Agregar partes (PNG, PSD o IPV)</b><br>cabeza, ojos, boca, brazos, piernas…<br><small>PNG o ASTC. IPV: cada carpeta es un frame y las subcarpetas son grupos. PSD: cada grupo es una sub-capa</small></span>
                         </label>
                         <p class="hint" id="piecesHint">Toca una pieza para ponerla en la capa seleccionada, en el frame actual.</p>
                         <div class="piece-grid" id="pieceGrid"></div>
@@ -296,8 +298,12 @@
                     <header class="sheet-head"><h3>Capas</h3><button class="icon-btn sheet-close" aria-label="Cerrar">✕</button></header>
                     <div class="sheet-body">
                         <ul class="layer-list" id="layerList"></ul>
-                        <div class="stack-row"><button class="btn btn-ghost btn-sm" id="layerAdd">+ Capa</button></div>
-                        <p class="hint">La capa de arriba se dibuja al frente.</p>
+                        <div class="stack-row">
+                            <button class="btn btn-ghost btn-sm" id="layerAdd">+ Capa</button>
+                            <button class="btn btn-ghost btn-sm" id="layerGroup">Agrupar</button>
+                            <button class="btn btn-ghost btn-sm" id="layerUngroup">Desagrupar</button>
+                        </div>
+                        <p class="hint">La capa de arriba se dibuja al frente. Un grupo junta capas (se mueven juntas). Expándelo (▶) para editar las sub-capas. En celular marca las casillas ☐; en PC también Ctrl+clic o Shift+clic. Deshacer: Ctrl+Z.</p>
                     </div>
                 </section>
 
@@ -338,7 +344,7 @@
                         <ul class="plain-list" id="animListParts"></ul>
                         <div class="field-row">
                             <label class="field"><span>Frames de la animación</span><input type="number" inputmode="numeric" id="animLength" min="1" max="600"></label>
-                            <label class="field"><span>FPS</span><input type="number" inputmode="numeric" id="pFps" value="24" min="1" max="120"></label>
+                            <label class="field"><span>FPS de esta animación</span><input type="number" inputmode="numeric" id="pFps" value="24" min="1" max="120"></label>
                         </div>
                         <div class="stack-row">
                             <button class="btn btn-ghost btn-sm" id="animAdd">+ Animación</button>
@@ -347,6 +353,10 @@
                             <button class="btn btn-danger btn-sm" id="animDel">Eliminar</button>
                         </div>
                         <label class="check"><input type="checkbox" id="tlLoop" checked> Repetir al reproducir</label>
+                        <div class="split-box">
+                            <button class="btn btn-ghost btn-block" id="splitAnimBtn2" disabled>Separar como nueva animación</button>
+                            <p class="hint"><span id="splitInfo">Sin selección</span>. Elige el rango en la línea de tiempo: clic en el primer frame y Shift+clic en el último (en el celular: botón “Rango” y dos toques). Cada frame incluye todas las capas.</p>
+                        </div>
                     </div>
                 </section>
 
@@ -365,8 +375,8 @@
                             </div>
                         </div>
                         <button class="btn btn-primary btn-block btn-lg" id="partsExportBtn" disabled>Generar pack por partes</button>
-                        <label class="btn btn-ghost btn-block" for="peOpenInput">Abrir spritemap por partes…</label>
-                        <input type="file" id="peOpenInput" multiple accept=".zip,.json,.png,application/zip,application/json,image/png" hidden>
+                        <label class="btn btn-ghost btn-block" for="peOpenInput">Abrir spritemap por partes, PSD o IPV…</label>
+                        <input type="file" id="peOpenInput" multiple accept=".zip,.json,.png,.astc,.psd,.ipv,application/zip,application/json,image/png" hidden>
                         <button class="btn btn-ghost btn-block" id="peNewBtn">Nuevo proyecto</button>
                         <div class="status" id="partsStatus">Sin partes todavía.</div>
                         <p class="hint">Se exporta con el mismo formato de Adobe Animate (Better Texture Atlas): <code>Animation.json</code> con símbolos por pieza, capas y matrices <code>MX</code>, más <code>spritemap1.json</code> y <code>spritemap1.png</code>.</p>
@@ -385,18 +395,36 @@
     </section>
 </main>
 
+<dialog id="splitDlg" class="split-dlg">
+    <form method="dialog" onsubmit="return false">
+        <h3>Separar como nueva animación</h3>
+        <p class="muted small" id="splitRangeTxt"></p>
+        <label class="field"><span>Nombre</span><input type="text" id="splitName" autocomplete="off"></label>
+        <div class="chips" id="splitChips"></div>
+        <label class="check"><input type="checkbox" id="splitCopy"> Copiar (dejar los frames también en la animación original)</label>
+        <div class="stack-row">
+            <button type="button" class="btn btn-ghost" id="splitCancel">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="splitOk">Separar</button>
+        </div>
+    </form>
+</dialog>
+
 <script src="JavaScript/lib/jszip.min.js"></script>
-<script src="JavaScript/core/utils.js"></script>
+<script src="JavaScript/core/utils.js?v=20261114d"></script>
+<script src="JavaScript/modules/astc-decode.js?v=20261114d"></script>
 <script src="JavaScript/core/bta-format.js"></script>
-<script src="JavaScript/core/matrix.js"></script>
+<script src="JavaScript/core/matrix.js?v=20261114e"></script>
 <script src="JavaScript/core/packer.js"></script>
 <script src="JavaScript/core/atlas-format.js"></script>
-<script src="JavaScript/core/atlas-io.js"></script>
-<script src="JavaScript/core/atlas-renderer.js"></script>
-<script src="JavaScript/modules/frames-editor.js"></script>
+<script src="JavaScript/core/atlas-io.js?v=20261114e"></script>
+<script src="JavaScript/core/atlas-renderer.js?v=20261114e"></script>
+<script src="JavaScript/modules/frames-editor.js?v=20261114d"></script>
 <script src="JavaScript/modules/atlas-loader.js"></script>
-<script src="JavaScript/modules/parts-doc.js"></script>
-<script src="JavaScript/modules/parts-editor.js"></script>
+<script src="JavaScript/modules/parts-doc.js?v=20261114e"></script>
+<script src="JavaScript/modules/ipv-import.js?v=20261114d"></script>
+<script src="JavaScript/modules/psd-import.js?v=20261114"></script>
+<script src="JavaScript/modules/layered-import.js?v=20261114d"></script>
+<script src="JavaScript/modules/parts-editor.js?v=20261114f"></script>
 <script src="JavaScript/app.js"></script>
 </body>
 </html>

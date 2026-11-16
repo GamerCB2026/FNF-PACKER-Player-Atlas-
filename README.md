@@ -19,7 +19,17 @@ FNF Stage Convert: https://gamercb2026.github.io/Convert-Stage-Psych-A-V-slice-V
 
 BY: GamerCB
 
+# Novedades v3.0.1
+
+En **Crear Spritemaps en Partes**:
+- **Separar como nueva animación:** selecciona un rango en la línea de tiempo (clic en el primer frame y Shift+clic en el último; en el celular, botón **Rango** y dos toques). Luego **Separar…** (barra de claves) o **Separar como nueva animación** (hoja Animaciones). Elige el nombre (sugerencias: idle, singLEFT, singDOWN, singUP, singRIGHT y sus variantes miss). Por defecto los frames se mueven; marca **Copiar** para dejarlos también en la animación original. Cada frame incluye todas las capas.
+- **Varios .ipv / .psd a la vez:** elige o arrastra varios archivos. Se ordenan por nombre y cada uno es una animación: `ipv 1`, `ipv 2`… (o `psd 1`…). Las piezas idénticas se reutilizan entre archivos.
+- **Renombrar y FPS por animación:** en la lista de Animaciones cada una tiene ✎ para renombrarla y su propio campo de FPS (24 por defecto). La vista previa usa los FPS de cada animación. Al exportar, `Animation.json` lleva el FPS más usado (el de la vista previa se guarda en `fnf-packer.json` para recuperarlo al volver a abrir el spritemap). No se exporta un `animaciones-fps.json` suelto: en V-Slice no se usa.
+- **PNG y ASTC:** en todos los cargadores (Generador, Agregar Spritemap, Partes, zips y carpetas) puedes usar `.astc` en lugar de `.png`. Si el json pide `spritemap1.png` y solo está `spritemap1.astc` (o al revés), se usa el que haya. El ASTC se decodifica a RGBA en el navegador (2D LDR, cualquier tamaño de bloque). La exportación sigue siendo PNG.
+- **Sub-capas / grupos:** en Capas marca 2 o más capas (casilla ☐, o Ctrl+clic / Shift+clic) y pulsa **Agrupar**. El grupo se mueve, escala y rota como una sola pieza; con **▶** lo expandes para editar las capas de adentro (sangría). **Desagrupar** las suelta otra vez. Al exportar, el grupo es un símbolo anidado de Adobe Animate (`SD.S` + instancia `SI`), compatible con V-Slice / FlxAnimate. En un **.psd** las carpetas/grupos entran como sub-capas; en un **.ipv** las carpetas de primer nivel siguen siendo frames y solo las subcarpetas internas se vuelven grupos.
+
 # Novedades v3.0.0
+
 
 - Interfaz nueva en tema oscuro azul, con menú lateral (3 rayitas).
 - **Crear Spritemaps**: el generador de siempre (misma salida V-Slice / P-Slice), ahora con vista previa animada, reordenar frames arrastrando, duplicar, renombrar y eliminar animaciones.
@@ -35,3 +45,19 @@ Estructura: `index.html`, `Style/style.css`, `JavaScript/core/*` (formato, empaq
 - Interpolación entre keyframes (lineal, suave, acelerar, frenar): se exporta horneada a frames de 1, como lo hace Animate, y se guarda en `fnf-packer.json` para seguir editándola.
 - **Agregar Spritemap** reproduce sprites rotados (`rotated: true`) y símbolos anidados, y permite elegir los archivos por separado.
 - Vista previa de la pantalla de inicio corregida en celular: ya no crece sin parar; tiene altura contenida y cabe en pantalla (vertical y horizontal).
+
+## Abrir PSD o IPV en "Crear Spritemaps en Partes"
+
+En **Abrir spritemap por partes, PSD o IPV…** (o arrastrando el archivo al lienzo) ahora puedes abrir:
+
+- **.psd** (Photoshop, ibisPaint, Krita…), leído con `ag-psd` guardado en `JavaScript/lib/ag-psd.js`, sin internet.
+- **.ipv** (proyecto de ibisPaint X), leído con un lector propio (`JavaScript/modules/ipv-import.js`).
+
+Cómo se convierte:
+- Cada capa visible es una **pieza**. Las capas idénticas se reutilizan como la misma pieza.
+- En **.ipv**, cada **carpeta de primer nivel** es un **frame** (como en ibisPaint). Las subcarpetas internas son **grupos/sub-capas**.
+- En **.psd**, las carpetas/grupos de un nivel son **sub-capas** de un solo pose. Si una carpeta tiene subcarpetas, la carpeta es una **animación con su nombre** (por ejemplo `idle`, `singLEFT`) y cada subcarpeta es un frame; las carpetas dentro del frame siguen siendo grupos.
+- Las capas fuera de carpetas quedan fijas en todos los frames (fondo o frente), salvo en un PSD de un solo pose (ahí van junto a los grupos).
+- Las capas ocultas no se ponen en la línea de tiempo.
+
+Después se anima y se exporta igual que cualquier proyecto por partes.
