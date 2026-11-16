@@ -52,7 +52,28 @@ window.FNF = window.FNF || {};
         im.src = src;
     });
 
-    U.blobToImage = async (blob) => U.loadImage(await U.readAsDataURL(blob));
+    U.isAstcName = (name) => /\.astc$/i.test(name || '');
+    U.isImageName = (name) => /\.(png|webp|jpe?g|gif|astc)$/i.test(name || '');
+    U.sameImageStem = (a, b) => U.stripExt(a).toLowerCase() === U.stripExt(b).toLowerCase();
+    /* Si piden foo.png y no está, prueba foo.astc (y al revés). */
+    U.findImageEntry = (entries, wanted) => {
+        const list = entries || [];
+        const want = String(wanted || '').toLowerCase();
+        const base = U.stripExt(want).toLowerCase();
+        return list.find(e => e.name.toLowerCase() === want)
+            || list.find(e => U.stripExt(e.name).toLowerCase() === base && U.isImageName(e.name))
+            || null;
+    };
+
+    U.blobToImage = async (blob) => {
+        const buf = await blob.arrayBuffer();
+        if (F.Astc && F.Astc.isAstc(buf)) {
+            if (typeof document !== 'undefined') return F.Astc.decodeToCanvas(buf);
+            const img = F.Astc.decode(buf);
+            return { width: img.width, height: img.height, data: img.data };
+        }
+        return U.loadImage(await U.readAsDataURL(new Blob([buf], { type: blob.type || 'application/octet-stream' })));
+    };
 
     U.canvasToImage = (canvas) => U.loadImage(canvas.toDataURL('image/png'));
 

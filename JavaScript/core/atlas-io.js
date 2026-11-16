@@ -1,6 +1,6 @@
 /* ==========================================================
    FNF Packer — carga de spritemaps existentes
-   Acepta: archivos sueltos (PNG + spritemap JSON + Animation.json)
+   Acepta: archivos sueltos (PNG o ASTC + spritemap JSON + Animation.json)
    o uno o varios .zip (como los que exporta esta página).
    ========================================================== */
 window.FNF = window.FNF || {};
@@ -50,7 +50,7 @@ window.FNF = window.FNF || {};
         const { dir, list } = pickGroup(all);
 
         const missing = [];
-        const pngs = list.filter(e => /\.png$/i.test(e.name));
+        const images = list.filter(e => /\.(png|astc)$/i.test(e.name));
         const jsons = list.filter(e => /\.json$/i.test(e.name));
 
         let anim = null, animRaw = null, partsProject = null;
@@ -69,7 +69,7 @@ window.FNF = window.FNF || {};
         }
 
         if (!spritemapJsons.length) missing.push('spritemap1.json');
-        if (!pngs.length) missing.push('spritemap1.png');
+        if (!images.length) missing.push('spritemap1.png o spritemap1.astc');
         if (missing.length) {
             const err = new Error('Falta: ' + missing.join(' y ') + '. Puedes agregarlo ahora y se juntará con lo que ya elegiste.');
             err.missing = missing;
@@ -83,12 +83,12 @@ window.FNF = window.FNF || {};
         for (const sj of spritemapJsons) {
             const parsed = Atlas.parseSpritemap(sj.data);
             const wanted = (parsed.image || U.stripExt(sj.entry.name) + '.png').toLowerCase();
-            let png = pngs.find(p => p.name.toLowerCase() === wanted)
-                || pngs.find(p => U.stripExt(p.name).toLowerCase() === U.stripExt(sj.entry.name).toLowerCase())
-                || (spritemapJsons.length === 1 ? pngs[0] : null);
-            if (!png) throw new Error(`No encontré la imagen ${parsed.image || ''} para ${sj.entry.name}.`);
-            const img = await U.blobToImage(png.blob);
-            const sheet = { name: png.name, jsonName: sj.entry.name, img, sprites: parsed.sprites, blob: png.blob, json: sj.data };
+            let imgFile = U.findImageEntry(images, wanted)
+                || U.findImageEntry(images, U.stripExt(sj.entry.name) + '.png')
+                || (spritemapJsons.length === 1 ? images[0] : null);
+            if (!imgFile) throw new Error(`No encontré la imagen ${parsed.image || wanted} (png o astc) para ${sj.entry.name}.`);
+            const img = await U.blobToImage(imgFile.blob);
+            const sheet = { name: imgFile.name, jsonName: sj.entry.name, img, sprites: parsed.sprites, blob: imgFile.blob, json: sj.data };
             sheets.push(sheet);
             parsed.sprites.forEach(s => sprites.set(s.name, Object.assign({}, s, { sheet })));
         }
@@ -104,7 +104,8 @@ window.FNF = window.FNF || {};
     /* Recorta un sprite del atlas a un canvas (des-rota si "rotated") */
     IO.spriteCanvas = (sprite) => {
         if (sprite._canvas) return sprite._canvas;
-        const img = sprite.sheet.img;
+        const img = sprite.sheet && sprite.sheet.img;
+        if (!img || !img.width) return IO._emptySprite || (IO._emptySprite = U.makeCanvas(1, 1));
         let c;
         if (!sprite.rotated) {
             c = U.makeCanvas(sprite.w, sprite.h);

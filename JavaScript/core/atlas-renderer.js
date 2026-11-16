@@ -16,7 +16,12 @@ window.FNF = window.FNF || {};
 
         rebuild() {
             this.symbols = new Map();
-            (this.atlas.anim?.SD?.S || []).forEach(s => this.symbols.set(s.SN, s.TL));
+            (this.atlas.anim?.SD?.S || []).forEach(s => {
+                if (!s || s.SN == null || !s.TL) return;
+                this.symbols.set(s.SN, s.TL);
+                const trim = String(s.SN).trim();
+                if (trim && trim !== s.SN) this.symbols.set(trim, s.TL);
+            });
             this.main = this.atlas.anim?.AN?.TL || null;
         }
 
@@ -81,7 +86,7 @@ window.FNF = window.FNF || {};
                     if (sp) cb(sp, M.multiply(parentM, M.fromElement(el.ASI)), alpha);
                 } else if (el.SI) {
                     const si = el.SI;
-                    const sub = this.symbols.get(si.SN);
+                    const sub = this.symbols.get(si.SN) || this.symbols.get(String(si.SN).trim());
                     if (!sub) continue;
                     const len = Math.max(1, AtlasRenderer.timelineLength(sub));
                     const ff = si.FF || 0;

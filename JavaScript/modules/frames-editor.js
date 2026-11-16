@@ -142,9 +142,9 @@ window.FNF = window.FNF || {};
     }
 
     async function handleFilesLoad(fileList) {
-        const files = Array.from(fileList).filter(f => /image\/png|\.png$/i.test(f.type || f.name))
+        const files = Array.from(fileList).filter(f => /image\/png|\.(png|astc)$/i.test((f.type || '') + ' ' + (f.name || '')))
             .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-        if (!files.length) return U.toast('Solo se aceptan imágenes PNG.', 'warn');
+        if (!files.length) return U.toast('Solo se aceptan imágenes PNG o ASTC.', 'warn');
         setStatus(`Cargando ${files.length} imagen(es)…`);
         for (const file of files) {
             const img = await U.blobToImage(file);

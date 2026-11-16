@@ -62,6 +62,7 @@ window.FNF = window.FNF || {};
             doc.anim.AN.TL.L.unshift({ LN: 'Layer_1', FR: [{ N: 'anim', I: 0, DU: Doc.length(doc), E: [] }] });
         }
         if (atlas.sidecar && atlas.sidecar.tweens) Doc.unbake(doc, atlas.sidecar.tweens);
+        if (atlas.sidecar && atlas.sidecar.animFps) Doc.labels(doc).forEach(l => { const v = +atlas.sidecar.animFps[l.name]; if (l.frame && v > 0) l.frame._fps = v; });
         return doc;
     };
 
@@ -143,10 +144,35 @@ window.FNF = window.FNF || {};
 
     /* Aplica propiedades conservando el pivote en (x, y) */
     Doc.applyProps = (doc, el, pr) => {
+        if (!el || !pr || ![pr.x, pr.y, pr.r, pr.sx, pr.sy].every(Number.isFinite)) return;
         const p = Doc.pivotLocal(doc, el);
         const L = Doc.composeLinear(pr);
         const tx = pr.x - (L[0] * p.x + L[2] * p.y), ty = pr.y - (L[1] * p.x + L[3] * p.y);
         Doc.setM(el, [L[0], L[1], L[2], L[3], tx, ty]);
+        if (el.SI && pr.a !== undefined) {
+            if (pr.a >= 0.9995) { if (el.SI.C && el.SI.C.M === 'CA') delete el.SI.C; }
+            else el.SI.C = { M: 'CA', AM: r3(U.clamp(pr.a, 0, 1)) };
+        }
+    };
+
+    /* Igual que props/applyProps, pero el elemento puede estar dentro de un grupo
+       (parentM = matriz del/los grupos padres). Las coordenadas quedan en el mundo. */
+    Doc.propsIn = (doc, el, parentM) => {
+        if (!parentM) return Doc.props(doc, el);
+        const local = Doc.getM(el), m = M.multiply(parentM, local);
+        const p = Doc.pivotLocal(doc, el);
+        const w = M.apply(m, p.x, p.y);
+        const d = Doc.decompose(m);
+        const a = el.SI && el.SI.C && el.SI.C.AM !== undefined ? +el.SI.C.AM : 1;
+        return { x: w[0], y: w[1], r: d.r, sx: d.sx, sy: d.sy, skew: d.skew, px: p.x, py: p.y, a };
+    };
+    Doc.applyPropsIn = (doc, el, pr, parentM) => {
+        if (!el || !pr || ![pr.x, pr.y, pr.r, pr.sx, pr.sy].every(Number.isFinite)) return;
+        const p = Doc.pivotLocal(doc, el);
+        const L = Doc.composeLinear(pr);
+        const tx = pr.x - (L[0] * p.x + L[2] * p.y), ty = pr.y - (L[1] * p.x + L[3] * p.y);
+        const world = [L[0], L[1], L[2], L[3], tx, ty];
+        Doc.setM(el, parentM ? M.multiply(M.invert(parentM), world) : world);
         if (el.SI && pr.a !== undefined) {
             if (pr.a >= 0.9995) { if (el.SI.C && el.SI.C.M === 'CA') delete el.SI.C; }
             else el.SI.C = { M: 'CA', AM: r3(U.clamp(pr.a, 0, 1)) };
@@ -186,27 +212,81 @@ window.FNF = window.FNF || {};
     }
 
     /* Elementos visibles de una capa en el frame f (interpolados si hay tween) */
-    Doc.evalLayer = (doc, li, f) => {
-        const layer = Doc.layers(doc)[li];
-        const fi = Doc.frameIndexAt(layer, f);
+    Doc.evalOn = (doc, layer, f, opts = {}) => {
+        let fi = Doc.frameIndexAt(layer, f);
+        if (fi < 0 && opts.hold) {
+            let best = -1;
+            (layer.FR || []).forEach((fr, i) => { if ((fr.I || 0) <= f && (best < 0 || (fr.I || 0) > (layer.FR[best].I || 0))) best = i; });
+            if (best >= 0) return { frame: layer.FR[best], E: layer.FR[best].E || [], local: 0, tween: false, held: true };
+        }
         if (fi < 0) return { frame: null, E: [], local: 0 };
         const fr = layer.FR[fi];
         const nx = Doc.tweenTarget(layer, fi);
         if (!nx || f === fr.I) return { frame: fr, E: fr.E || [], local: f - fr.I, tween: !!nx };
-        const t = (Doc.EASES[fr._tw] || Doc.EASES.linear)((f - fr.I) / fr.DU);
+        const t = (Doc.EASES[fr._tw] || Doc.EASES.linear)((f - fr.I) / Math.max(1, fr.DU));
         return { frame: fr, E: fr.E.map((e, i) => lerpElement(doc, e, nx.E[i], t)), local: f - fr.I, tween: true };
     };
+    Doc.evalLayer = (doc, li, f) => Doc.evalOn(doc, Doc.layers(doc)[li], f);
 
-    /* Recorre todo lo que se dibuja: cb(sprite, matrix, alpha, li, ei) */
+    function graphicFrame(si, local, tl) {
+        const len = Math.max(1, (typeof AtlasRenderer !== 'undefined' ? AtlasRenderer : F.AtlasRenderer).timelineLength(tl));
+        const ff = si && si.FF || 0;
+        if (si && si.LP === 'SF') return ff;
+        if (si && si.LP === 'PO') return Math.min(ff + local, len - 1);
+        return ((ff + local) % len + len) % len;
+    }
+    Doc.graphicFrame = graphicFrame;
+
+    /* Recorre todo lo que se dibuja: cb(sprite, matrix, alpha, li, ei, info)
+       info: { scope, sli, ei, anc, parentM } para sub-capas de un grupo.
+       Si un grupo está expandido (capa._open), el hit/selección apunta a la sub-capa;
+       si está cerrado, todo el grupo se reporta como esa instancia. */
     Doc.walk = (doc, f, cb, opts = {}) => {
-        const L = Doc.layers(doc);
-        for (let li = L.length - 1; li >= 0; li--) {
-            if (L[li]._hidden && !opts.includeHidden) continue;
-            const ev = Doc.evalLayer(doc, li, f);
-            ev.E.forEach((el, ei) => {
-                doc.renderer.walkElements([el], ev.local, M.identity(), 1, (sp, m, a) => cb(sp, m, a, li, ei), 0);
-            });
-        }
+        const seen = new Set();
+        const walkTL = (L, frame, parentM, parentA, anc, depth) => {
+            if (!L || depth > 32) return;
+            for (let li = L.length - 1; li >= 0; li--) {
+                if (L[li]._hidden && !opts.includeHidden) continue;
+                if (L[li].LT === 'Clp' || L[li].LT === 'Clipper') continue;
+                let ev;
+                try { ev = Doc.evalOn(doc, L[li], frame, { hold: true }); }
+                catch (err) { continue; }
+                (ev.E || []).forEach((el, ei) => {
+                    const gsn = el.SI && Doc.isGroupSymbol(doc, el.SI.SN) ? el.SI.SN : null;
+                    if (gsn) {
+                        const key = gsn + '@' + depth + ':' + li;
+                        if (seen.has(gsn) && anc.some(a => a.childSn === gsn)) return;
+                        seen.add(gsn);
+                        const m = M.multiply(parentM, Doc.getM(el));
+                        if (!m.every(Number.isFinite)) return;
+                        let a = parentA;
+                        if (el.SI.C && el.SI.C.AM !== undefined && (el.SI.C.M === 'CA' || el.SI.C.M === 'AD' || el.SI.C.M === 'Alpha')) a *= +el.SI.C.AM;
+                        const tl = Doc.symbol(doc, gsn).TL;
+                        const next = anc.concat([{ li, ei, childSn: gsn, open: !!L[li]._open, parentM: m }]);
+                        walkTL(tl.L || [], graphicFrame(el.SI, ev.local, tl), m, a, next, depth + 1);
+                        seen.delete(gsn);
+                        return;
+                    }
+                    let cut = -1;
+                    for (let i = 0; i < anc.length; i++) if (!anc[i].open) { cut = i; break; }
+                    let info;
+                    if (cut < 0) {
+                        const leaf = anc[anc.length - 1], top = anc[0] || { li, ei };
+                        info = { scope: leaf ? leaf.childSn : null, sli: li, ei, li: top.li, anc: anc.slice(), parentM };
+                    } else {
+                        const closed = anc[cut], par = cut > 0 ? anc[cut - 1] : null;
+                        info = { scope: par ? par.childSn : null, sli: closed.li, ei: closed.ei, li: (anc[0] || closed).li, anc: anc.slice(0, cut), parentM: par ? par.parentM : M.identity() };
+                    }
+                    try {
+                        doc.renderer.walkElements([el], ev.local, parentM, parentA, (sp, m, a) => {
+                            if (!sp || !m || !m.every(Number.isFinite)) return;
+                            cb(sp, m, a, info.li, info.ei, info);
+                        }, 0);
+                    } catch (err) { /* una pieza no debe tumbar el resto */ }
+                });
+            }
+        };
+        walkTL(Doc.layers(doc), f, M.identity(), 1, [], 0);
     };
 
     /* ---------------- Operaciones de keyframes ---------------- */
@@ -215,35 +295,43 @@ window.FNF = window.FNF || {};
         if (i < 0) return;
         const fr = layer.FR[i];
         if (fr.I === f) return;
-        const E = useEval && li >= 0 ? clone(Doc.evalLayer(doc, li, f).E) : clone(fr.E || []);
+        const E = useEval ? clone(Doc.evalOn(doc, layer, f).E) : clone(fr.E || []);
         const nf = { I: f, DU: fr.I + fr.DU - f, E };
         if (fr._tw) nf._tw = fr._tw;
         fr.DU = f - fr.I;
         layer.FR.splice(i + 1, 0, nf);
+        syncGroupFF(doc, nf, f);
     }
 
-    /* Asegura un keyframe en la capa li, frame f; lo devuelve */
-    Doc.ensureKey = (doc, li, f) => {
-        const layer = Doc.layers(doc)[li];
+    function syncGroupFF(doc, fr, f) {
+        (fr.E || []).forEach(e => { if (e.SI && Doc.isGroupSymbol(doc, e.SI.SN)) e.SI.FF = f; });
+    }
+
+    /* Asegura un keyframe en una capa, frame f; lo devuelve */
+    Doc.ensureKeyOn = (doc, layer, f, evLi = -1) => {
         const i = Doc.frameIndexAt(layer, f);
         if (i >= 0) {
-            if (layer.FR[i].I !== f) splitAt(doc, layer, f, true, li);
-            return layer.FR[Doc.frameIndexAt(layer, f)];
+            if (layer.FR[i].I !== f) splitAt(doc, layer, f, true, evLi);
+            const fr = layer.FR[Doc.frameIndexAt(layer, f)];
+            syncGroupFF(doc, fr, f);
+            return fr;
         }
         // hueco o después del final: crear keyframe copiando el anterior
         let prev = null, next = null;
         layer.FR.forEach(fr => { if (fr.I + fr.DU <= f && (!prev || fr.I > prev.I)) prev = fr; if (fr.I > f && (!next || fr.I < next.I)) next = fr; });
         const end = next ? next.I : Math.max(Doc.length(doc), f + 1);
         const nf = { I: f, DU: Math.max(1, end - f), E: prev ? clone(prev.E || []) : [] };
+        syncGroupFF(doc, nf, f);
         layer.FR.push(nf);
         layer.FR.sort((a, b) => a.I - b.I);
         return nf;
     };
+    Doc.ensureKey = (doc, li, f) => Doc.ensureKeyOn(doc, Doc.layers(doc)[li], f, li);
 
-    Doc.isKey = (doc, li, f) => !!(Doc.layers(doc)[li].FR || []).find(fr => fr.I === f);
+    Doc.isKeyOn = (doc, layer, f) => !!(layer.FR || []).find(fr => fr.I === f);
+    Doc.isKey = (doc, li, f) => Doc.isKeyOn(doc, Doc.layers(doc)[li], f);
 
-    Doc.removeKey = (doc, li, f) => {
-        const layer = Doc.layers(doc)[li];
+    Doc.removeKeyOn = (doc, layer, f) => {
         const i = layer.FR.findIndex(fr => fr.I === f);
         if (i < 0) return false;
         const prev = layer.FR[i - 1];
@@ -251,23 +339,40 @@ window.FNF = window.FNF || {};
         else layer.FR[i].E = [];
         return true;
     };
+    Doc.removeKey = (doc, li, f) => Doc.removeKeyOn(doc, Doc.layers(doc)[li], f);
 
-    Doc.blankKey = (doc, li, f) => { const k = Doc.ensureKey(doc, li, f); k.E = []; delete k._tw; return k; };
+    Doc.blankKeyOn = (doc, layer, f) => { const k = Doc.ensureKeyOn(doc, layer, f); k.E = []; delete k._tw; return k; };
+    Doc.blankKey = (doc, li, f) => Doc.blankKeyOn(doc, Doc.layers(doc)[li], f);
 
-    Doc.setTween = (doc, li, f, ease) => {
-        const fr = Doc.frameAt(Doc.layers(doc)[li], f);
+    Doc.setTweenOn = (doc, layer, f, ease) => {
+        const fr = Doc.frameAt(layer, f);
         if (!fr) return false;
         if (ease) fr._tw = ease; else delete fr._tw;
         return true;
     };
+    Doc.setTween = (doc, li, f, ease) => Doc.setTweenOn(doc, Doc.layers(doc)[li], f, ease);
 
     /* ---------------- Operaciones de rango (animaciones) ---------------- */
+    /* Capas de símbolos-grupo (incluidos los anidados): hay que alargarlas/recortarlas
+       igual que las de la línea de tiempo principal para que el Graphic se quede a tempo. */
+    Doc.forEachGroupLayer = (doc, fn) => {
+        (doc.anim.SD.S || []).forEach(s => {
+            if (!Doc.isGroupSymbol(doc, s.SN)) return;
+            (s.TL.L || []).forEach((l, li) => fn(l, s.SN, li));
+        });
+    };
+    function allRangeLayers(doc) {
+        const out = Doc.layers(doc).slice();
+        Doc.forEachGroupLayer(doc, l => out.push(l));
+        return out;
+    }
+
     function shiftFrom(doc, from, delta) {
-        Doc.layers(doc).forEach(l => l.FR.forEach(fr => { if (fr.I >= from) fr.I += delta; }));
+        allRangeLayers(doc).forEach(l => l.FR.forEach(fr => { if (fr.I >= from) fr.I += delta; }));
     }
 
     Doc.deleteRange = (doc, a, b) => {
-        Doc.layers(doc).forEach((l, li) => {
+        allRangeLayers(doc).forEach(l => {
             splitAt(doc, l, a, false); splitAt(doc, l, b, false);
             l.FR = l.FR.filter(fr => !(fr.I >= a && fr.I < b));
         });
@@ -276,16 +381,17 @@ window.FNF = window.FNF || {};
 
     Doc.duplicateRange = (doc, a, b) => {
         const n = b - a;
-        Doc.layers(doc).forEach(l => { splitAt(doc, l, a, false); splitAt(doc, l, b, false); });
-        const copies = Doc.layers(doc).map(l => l.FR.filter(fr => fr.I >= a && fr.I < b).map(fr => Object.assign(clone(fr), { I: fr.I + n })));
+        const layers = allRangeLayers(doc);
+        layers.forEach(l => { splitAt(doc, l, a, false); splitAt(doc, l, b, false); });
+        const copies = layers.map(l => l.FR.filter(fr => fr.I >= a && fr.I < b).map(fr => Object.assign(clone(fr), { I: fr.I + n })));
         shiftFrom(doc, b, n);
-        Doc.layers(doc).forEach((l, i) => { l.FR.push(...copies[i]); l.FR.sort((x, y) => x.I - y.I); });
+        layers.forEach((l, i) => { l.FR.push(...copies[i]); l.FR.sort((x, y) => x.I - y.I); });
     };
 
     /* Extiende (n>0) o recorta (n<0) el final de un rango [a,b) */
     Doc.resizeRange = (doc, a, b, n) => {
         if (n < 0) { Doc.deleteRange(doc, Math.max(a + 1, b + n), b); return; }
-        Doc.layers(doc).forEach(l => {
+        allRangeLayers(doc).forEach(l => {
             const fr = Doc.frameAt(l, b - 1);
             l.FR.forEach(x => { if (x.I >= b) x.I += n; });
             if (fr) fr.DU += n;
@@ -295,11 +401,12 @@ window.FNF = window.FNF || {};
     Doc.addAnimation = (doc, name, length) => {
         const end = Doc.length(doc);
         const li = Doc.labelLayerIndex(doc);
-        Doc.layers(doc).forEach((l, i) => {
-            if (i === li) return;
+        const extend = (l, ev) => {
             const last = Doc.frameAt(l, end - 1);
-            if (last) l.FR.push({ I: end, DU: length, E: clone(Doc.evalLayer(doc, i, end - 1).E) });
-        });
+            if (last) l.FR.push({ I: end, DU: length, E: clone(ev.E) });
+        };
+        Doc.layers(doc).forEach((l, i) => { if (i !== li) extend(l, Doc.evalLayer(doc, i, end - 1)); });
+        Doc.forEachGroupLayer(doc, l => extend(l, Doc.evalOn(doc, l, end - 1)));
         Doc.layers(doc)[li].FR.push({ N: name, I: end, DU: length, E: [] });
     };
 
@@ -319,9 +426,16 @@ window.FNF = window.FNF || {};
         return layer;
     };
 
-    Doc.uniqueLayerName = (doc, base) => {
-        const names = new Set(Doc.layers(doc).map(l => l.LN));
+    Doc.uniqueLayerName = (doc, base, layers) => {
+        const names = new Set((layers || Doc.layers(doc)).map(l => l.LN));
         let n = base, i = 2; while (names.has(n)) n = `${base} ${i++}`; return n;
+    };
+
+    /* Lista de capas de un símbolo (o de la línea de tiempo principal si sn es null) */
+    Doc.layerList = (doc, sn) => {
+        if (!sn) return Doc.layers(doc);
+        const s = Doc.symbol(doc, sn);
+        return s && s.TL ? (s.TL.L || []) : [];
     };
 
     /* ---------------- Piezas (símbolos con una imagen) ---------------- */
@@ -348,14 +462,22 @@ window.FNF = window.FNF || {};
         return { SI: { SN: sn, FF: 0, ST: 'G', TRP: { x: c.x, y: c.y }, LP: 'LP', MX: [1, 0, 0, 1, r2(x - c.x), r2(y - c.y)] } };
     };
 
+    function eachElement(doc, fn) {
+        const scan = (L) => (L || []).forEach(l => (l.FR || []).forEach(fr => (fr.E || []).forEach(e => fn(e, fr, l))));
+        scan(Doc.layers(doc));
+        (doc.anim.SD.S || []).forEach(s => scan(s.TL && s.TL.L));
+    }
+
     Doc.symbolUsage = (doc, sn) => {
         let n = 0;
-        Doc.layers(doc).forEach(l => l.FR.forEach(fr => (fr.E || []).forEach(e => { if (e.SI && e.SI.SN === sn) n++; })));
+        eachElement(doc, e => { if (e.SI && e.SI.SN === sn) n++; });
         return n;
     };
 
     Doc.removePiece = (doc, sn) => {
-        Doc.layers(doc).forEach(l => l.FR.forEach(fr => { fr.E = (fr.E || []).filter(e => !(e.SI && e.SI.SN === sn)); }));
+        const strip = (L) => (L || []).forEach(l => (l.FR || []).forEach(fr => { fr.E = (fr.E || []).filter(e => !(e.SI && e.SI.SN === sn)); }));
+        strip(Doc.layers(doc));
+        (doc.anim.SD.S || []).forEach(s => strip(s.TL && s.TL.L));
         doc.anim.SD.S = doc.anim.SD.S.filter(s => s.SN !== sn);
         doc.atlasDirty = true;
         Doc.refresh(doc);
@@ -386,26 +508,41 @@ window.FNF = window.FNF || {};
     };
 
     /* ---------------- Exportación ---------------- */
-    /** Hornea tweens a keyframes de 1 frame (Animate exporta así) */
-    Doc.bake = (doc) => {
-        const out = clone(doc.anim);
-        const tweens = [];
-        out.AN.TL.L.forEach((l, li) => {
-            const src = Doc.layers(doc)[li];
+    function bakeTL(doc, srcL, outL, tweens, sn) {
+        outL.forEach((l, li) => {
+            const src = srcL[li];
             const FR = [];
-            src.FR.forEach((fr, fi) => {
+            (src.FR || []).forEach((fr, fi) => {
                 const nx = Doc.tweenTarget(src, fi);
-                if (!nx || fr.DU < 2) { const c = clone(fr); delete c._tw; FR.push(c); return; }
-                tweens.push({ layer: src.LN, layerIndex: li, I: fr.I, DU: fr.DU, e: fr._tw });
+                if (!nx || fr.DU < 2) { const c = clone(fr); delete c._tw; delete c._fps; FR.push(c); return; }
+                const rec = { layer: src.LN, layerIndex: li, I: fr.I, DU: fr.DU, e: fr._tw };
+                if (sn) rec.sn = sn;
+                tweens.push(rec);
                 for (let k = 0; k < fr.DU; k++) {
-                    const ev = Doc.evalLayer(doc, li, fr.I + k);
-                    const c = clone(fr); delete c._tw;
+                    const ev = Doc.evalOn(doc, src, fr.I + k);
+                    const c = clone(fr); delete c._tw; delete c._fps;
                     if (k > 0) delete c.N;
                     c.I = fr.I + k; c.DU = 1; c.E = clone(ev.E);
                     FR.push(c);
                 }
             });
             l.FR = FR;
+            delete l._hidden; delete l._open;
+        });
+    }
+
+    /** Hornea tweens a keyframes de 1 frame (Animate exporta así) */
+    Doc.bake = (doc) => {
+        const out = clone(doc.anim);
+        const tweens = [];
+        bakeTL(doc, Doc.layers(doc), out.AN.TL.L, tweens, null);
+        (out.SD.S || []).forEach((s, i) => {
+            const src = doc.anim.SD.S[i];
+            if (!src || !Doc.isGroupSymbol(doc, src.SN)) {
+                (s.TL.L || []).forEach(l => { delete l._hidden; delete l._open; });
+                return;
+            }
+            bakeTL(doc, src.TL.L || [], s.TL.L || [], tweens, src.SN);
         });
         return { anim: out, tweens };
     };
@@ -413,7 +550,7 @@ window.FNF = window.FNF || {};
     /** Revierte el horneado usando fnf-packer.json */
     Doc.unbake = (doc, tweens) => {
         tweens.forEach(t => {
-            const l = Doc.layers(doc)[t.layerIndex];
+            const l = t.sn ? (Doc.symbol(doc, t.sn) && Doc.symbol(doc, t.sn).TL.L[t.layerIndex]) : Doc.layers(doc)[t.layerIndex];
             if (!l || l.LN !== t.layer) return;
             const fr = l.FR.find(x => x.I === t.I);
             if (!fr) return;
@@ -477,9 +614,161 @@ window.FNF = window.FNF || {};
         dir.file('Animation.json', animationText);
         dir.file('spritemap1.json', spritemapText);
         dir.file('spritemap1.png', pngBlob);
-        if (tweens.length) dir.file('fnf-packer.json', JSON.stringify({ format: 'fnf-packer-bta', version: 1, tweens }, null, 1));
+        const fpsList = Doc.labels(doc).map(l => ({ name: l.name, fps: Doc.animFps(doc, l), frames: l.length }));
+        const customFps = fpsList.some(x => x.fps !== (anim.MD?.FRT || 24));
+        if (tweens.length || customFps) {
+            const side = { format: 'fnf-packer-bta', version: 1, tweens };
+            if (customFps) side.animFps = Object.fromEntries(fpsList.map(x => [x.name, x.fps]));
+            dir.file('fnf-packer.json', JSON.stringify(side, null, 1));
+        }
         const blob = await zip.generateAsync({ type: 'blob' });
         return { blob, fileName: `${folder}.zip`, animationText, spritemapText, pngBlob, tweens };
+    };
+
+    /* ---------------- FPS por animación (v3.0.1) ---------------- */
+    Doc.animFps = (doc, label) => {
+        const v = label && label.frame && +label.frame._fps;
+        return v > 0 ? v : (+(doc.anim.MD && doc.anim.MD.FRT) || 24);
+    };
+    Doc.setAnimFps = (doc, label, fps) => { if (label && label.frame) label.frame._fps = U.clamp(+fps || 24, 1, 120); };
+    /* FPS principal (el que más se repite) para MD.FRT */
+    Doc.mainFps = (doc) => {
+        const c = {}; Doc.labels(doc).forEach(l => { const v = Doc.animFps(doc, l); c[v] = (c[v] || 0) + l.length; });
+        const best = Object.entries(c).sort((a, b) => b[1] - a[1])[0];
+        return best ? +best[0] : 24;
+    };
+
+    /* ---------------- Separar un rango como animación nueva ----------------
+       Copia los frames [a, b) (todas las capas) al final como animación "name";
+       si copy = false, además los quita de su animación original. */
+    Doc.separateRange = (doc, a, b, name, copy = false) => {
+        const n = b - a;
+        if (n < 1) throw new Error('Rango vacío.');
+        const li0 = Doc.labelLayerIndex(doc);
+        const end = Doc.length(doc);
+        const src = Doc.labels(doc).find(l => a >= l.start && a < l.start + l.length);
+        const copySpan = (l) => {
+            const pieces = [];
+            l.FR.forEach((fr, fi) => {
+                const s0 = Math.max(fr.I, a), e0 = Math.min(fr.I + fr.DU, b);
+                if (e0 <= s0) return;
+                const tw = Doc.tweenTarget(l, fi);
+                const clipped = s0 > fr.I || e0 < fr.I + fr.DU;
+                if (tw && clipped) {
+                    for (let f = s0; f < e0; f++) pieces.push({ I: end + f - a, DU: 1, E: clone(Doc.evalOn(doc, l, f).E) });
+                    return;
+                }
+                const c = clone(fr); delete c.N;
+                if (clipped) { c.E = clone(Doc.evalOn(doc, l, s0).E); delete c._tw; }
+                c.I = end + (s0 - a); c.DU = e0 - s0;
+                pieces.push(c);
+            });
+            // rellena huecos con frames vacíos para que la capa cubra la animación nueva
+            let t = end; const filled = [];
+            pieces.sort((x, y) => x.I - y.I).forEach(p => { if (p.I > t) filled.push({ I: t, DU: p.I - t, E: [] }); filled.push(p); t = p.I + p.DU; });
+            if (t < end + n) filled.push({ I: t, DU: end + n - t, E: [] });
+            l.FR.push(...filled);
+        };
+        Doc.layers(doc).forEach((l, li) => { if (li !== li0) copySpan(l); });
+        Doc.forEachGroupLayer(doc, copySpan);
+        const label = { N: name, I: end, DU: n, E: [] };
+        if (src) label._fps = Doc.animFps(doc, src);
+        const LL = Doc.layers(doc)[li0];
+        if (copy) { LL.FR.push(label); return label; }
+        // mover: quita [a,b) y reajusta las etiquetas sin perder sus nombres
+        const old = LL.FR.map(fr => ({ fr, I: fr.I, DU: fr.DU }));
+        Doc.deleteRange(doc, a, b);
+        const fixed = [];
+        old.forEach(o => {
+            let I = o.I, DU = o.DU;
+            if (I >= b) I -= n;
+            else if (I + DU > a) { DU -= Math.min(I + DU, b) - Math.max(I, a); if (I > a) I = a; }
+            if (DU > 0) { o.fr.I = I; o.fr.DU = DU; fixed.push(o.fr); }
+        });
+        label.I = end - n;
+        fixed.push(label);
+        LL.FR = fixed.sort((x, y) => x.I - y.I);
+        return label;
+    };
+
+    /* ---------------- Sub-capas / grupos (símbolos anidados) ---------------- */
+    /* Un símbolo-grupo tiene varias capas o instancias SI (no es una pieza ASI suelta). */
+    Doc.isGroupSymbol = (doc, sn) => {
+        const s = Doc.symbol(doc, sn);
+        if (!s || !s.TL || !s.TL.L) return false;
+        if (s.TL.L.length > 1) return true;
+        return s.TL.L.some(l => (l.FR || []).some(fr => (fr.E || []).some(e => e.SI) || (fr.E || []).length > 1));
+    };
+
+    /* Si la capa es un grupo, devuelve el nombre del símbolo; si no, null. */
+    Doc.groupSN = (doc, layer) => {
+        if (!layer) return null;
+        for (const fr of (layer.FR || [])) {
+            const E = fr.E || [];
+            if (E.length === 1 && E[0].SI && Doc.isGroupSymbol(doc, E[0].SI.SN)) return E[0].SI.SN;
+        }
+        return null;
+    };
+
+    /* Agrupa capas hermanas (mismo TL, refs = [{sn, li}, ...]) en un símbolo anidado
+       con una instancia SI en la capa padre. Devuelve { sn, li, layer }. */
+    Doc.groupLayers = (doc, refs, name) => {
+        if (!refs || refs.length < 2) throw new Error('Selecciona al menos 2 capas para agrupar.');
+        const parentSn = refs[0].sn || null;
+        if (refs.some(r => (r.sn || null) !== parentSn)) throw new Error('Solo se pueden agrupar capas del mismo nivel.');
+        const L = Doc.layerList(doc, parentSn);
+        const idxs = [...new Set(refs.map(r => r.li))].sort((a, b) => a - b);
+        if (idxs.some(i => i < 0 || i >= L.length)) throw new Error('Capa inválida.');
+        if (!parentSn && idxs.includes(Doc.labelLayerIndex(doc))) throw new Error('No se puede agrupar la capa de etiquetas.');
+        const gsn = Doc.uniqueSymbolName(doc, name || 'Grupo');
+        const children = idxs.map(i => clone(L[i]));
+        doc.anim.SD.S.push({ SN: gsn, TL: { L: children } });
+        Doc.refresh(doc);
+        const c = Doc.symbolCenter(doc, gsn);
+        const inst = Doc.newInstance(doc, gsn, c.x, c.y);
+        inst.SI.FF = 0;
+        const total = Doc.length(doc);
+        const layer = { LN: Doc.uniqueLayerName(doc, name || gsn, L.filter((_, i) => !idxs.includes(i))), FR: [{ I: 0, DU: total, E: [inst] }], _open: true };
+        const insertAt = idxs[0];
+        for (let i = idxs.length - 1; i >= 0; i--) L.splice(idxs[i], 1);
+        L.splice(insertAt, 0, layer);
+        Doc.refresh(doc);
+        return { sn: gsn, li: insertAt, layer };
+    };
+
+    /* Desagrupa una capa-grupo: las sub-capas vuelven al padre, con la
+       transformación del grupo aplicada. */
+    Doc.ungroupLayer = (doc, ref) => {
+        const L = Doc.layerList(doc, ref.sn || null);
+        const layer = L[ref.li];
+        const gsn = Doc.groupSN(doc, layer);
+        if (!gsn) throw new Error('Esa capa no es un grupo.');
+        const sym = Doc.symbol(doc, gsn);
+        const len = Doc.length(doc);
+        const children = clone(sym.TL.L || []);
+        children.forEach(cl => {
+            const times = new Set();
+            (cl.FR || []).forEach(fr => times.add(fr.I));
+            (layer.FR || []).forEach(fr => times.add(fr.I));
+            const sorted = [...times].sort((a, b) => a - b);
+            const newFR = [];
+            sorted.forEach((t, i) => {
+                const next = sorted[i + 1] ?? len;
+                if (next <= t) return;
+                const evC = Doc.evalOn(doc, cl, t);
+                const evG = Doc.evalOn(doc, layer, t);
+                const gEl = (evG.E || []).find(e => e.SI && e.SI.SN === gsn);
+                const gM = gEl ? Doc.getM(gEl) : M.identity();
+                const E = (evC.E || []).map(e => { const c = clone(e); Doc.setM(c, M.multiply(gM, Doc.getM(c))); return c; });
+                newFR.push({ I: t, DU: next - t, E });
+            });
+            cl.FR = newFR;
+            cl._open = cl._open;
+        });
+        L.splice(ref.li, 1, ...children);
+        if (Doc.symbolUsage(doc, gsn) === 0) doc.anim.SD.S = doc.anim.SD.S.filter(s => s.SN !== gsn);
+        Doc.refresh(doc);
+        return children.length;
     };
 
     Doc.snapshot = (doc) => JSON.stringify({ anim: doc.anim, dirty: doc.atlasDirty });

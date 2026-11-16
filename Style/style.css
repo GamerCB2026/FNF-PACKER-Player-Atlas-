@@ -405,6 +405,12 @@ body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 .layer-row.is-selected { border-color: var(--accent); background: #0f2244; }
 .layer-row.is-hidden .layer-name { opacity: .45; }
 .layer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.layer-row { padding-left: calc(6px + var(--d, 0) * 16px); }
+.layer-row.is-group .layer-name { font-weight: 600; }
+.layer-row.is-picked { box-shadow: inset 0 0 0 1px #38c6f4; }
+.layer-row.is-child { background: #0a1428; }
+.layer-twisty, .layer-pick { flex: 0 0 auto; min-width: 36px; }
+.layer-twisty-ph { width: 36px; flex: 0 0 36px; }
 .layer-btns { display: flex; gap: 2px; }
 #inspector input[type="range"] { width: 100%; }
 
@@ -510,3 +516,18 @@ body { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
     .pe-tabbar button { min-height: 44px; flex-direction: row; gap: 6px; }
     .pe-tabbar svg { width: 19px; height: 19px; }
 }
+
+/* v3.0.1 — separar animaciones, FPS por animación */
+.anim-row { align-items: center; }
+.anim-row-tools { display: flex; align-items: center; gap: 6px; }
+.anim-fps { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; color: var(--muted, #7f93b5); }
+.anim-fps input { width: 52px; padding: 3px 5px; font-size: 12px; }
+#rangeBtn.active { border-color: #ffc43d; color: #ffc43d; }
+.split-box { margin-top: 10px; }
+.split-dlg { max-width: min(440px, 92vw); width: 100%; background: var(--bg-2, #0c1830); color: inherit; border: 1px solid var(--line-2, #1d3256); border-radius: 12px; padding: 16px; }
+.split-dlg::backdrop { background: rgba(3, 8, 18, 0.7); }
+.split-dlg h3 { margin: 0 0 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.chip { font: inherit; font-size: 12px; padding: 5px 9px; border-radius: 999px; border: 1px solid var(--line-2, #1d3256); background: transparent; color: inherit; cursor: pointer; }
+.chip:hover { border-color: var(--accent, #38c6f4); }
+.chip.used { opacity: 0.45; }

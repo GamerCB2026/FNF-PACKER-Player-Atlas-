@@ -42,10 +42,17 @@ window.FNF = window.FNF || {};
         ];
     };
 
-    M.fromMX = (mx) => (Array.isArray(mx) && mx.length >= 6) ? [+mx[0], +mx[1], +mx[2], +mx[3], +mx[4], +mx[5]] : M.identity();
+    M.fromMX = (mx) => {
+        if (!Array.isArray(mx) || mx.length < 6) return M.identity();
+        const m = [+mx[0], +mx[1], +mx[2], +mx[3], +mx[4], +mx[5]];
+        return m.every(Number.isFinite) ? m : M.identity();
+    };
 
     M.fromM3D = (m3d) => {
-        if (Array.isArray(m3d) && m3d.length >= 14) return [+m3d[0], +m3d[1], +m3d[4], +m3d[5], +m3d[12], +m3d[13]];
+        if (Array.isArray(m3d) && m3d.length >= 14) {
+            const m = [+m3d[0], +m3d[1], +m3d[4], +m3d[5], +m3d[12], +m3d[13]];
+            return m.every(Number.isFinite) ? m : M.identity();
+        }
         if (m3d && typeof m3d === 'object') {
             return [+(m3d.m00 ?? 1), +(m3d.m01 ?? 0), +(m3d.m10 ?? 0), +(m3d.m11 ?? 1), +(m3d.m30 ?? 0), +(m3d.m31 ?? 0)];
         }
